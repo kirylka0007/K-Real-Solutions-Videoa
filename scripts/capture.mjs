@@ -79,6 +79,65 @@ async function clearEnvironmentNotices(page) {
   await page.waitForTimeout(400)
 }
 
+/**
+ * Where a thing is, in the captured image's own pixels.
+ *
+ * Focal rectangles were guessed off a screenshot at first, and every one of
+ * them was wrong — the film framed empty canvas below the content twice before
+ * this existed. The element knows its own bounds, so the capture writes them
+ * down: multiply by the device scale factor and the numbers are directly usable
+ * against the PNG, and they stay correct when a layout moves.
+ */
+const REGIONS = {}
+
+async function region(page, shotName, key, locator, scale = 2) {
+  const box = await locator.boundingBox().catch(() => null)
+  if (!box) {
+    console.log(`  ! region ${shotName}/${key} not found`)
+    return
+  }
+  REGIONS[shotName] ??= {}
+  REGIONS[shotName][key] = {
+    x: Math.round(box.x * scale),
+    y: Math.round(box.y * scale),
+    width: Math.round(box.width * scale),
+    height: Math.round(box.height * scale),
+  }
+}
+
+/**
+ * The biggest SVG on the page, which is the chart rather than an icon.
+ *
+ * `page.locator('svg').last()` picks whichever happens to be last in the
+ * document — here a 40px toolbar glyph — and the film then framed a 40x40
+ * region blown up to fill 1080p. Ranking by painted area cannot make that
+ * mistake.
+ */
+async function largestSvg(page, shotName, key, scale = 2) {
+  const box = await page.evaluate(() => {
+    let best = null
+    for (const svg of Array.from(document.querySelectorAll('svg'))) {
+      const r = svg.getBoundingClientRect()
+      if (r.width < 200 || r.height < 120) continue
+      if (!best || r.width * r.height > best.width * best.height) {
+        best = { x: r.x, y: r.y, width: r.width, height: r.height }
+      }
+    }
+    return best
+  })
+  if (!box) {
+    console.log(`  ! region ${shotName}/${key} not found`)
+    return
+  }
+  REGIONS[shotName] ??= {}
+  REGIONS[shotName][key] = {
+    x: Math.round(box.x * scale),
+    y: Math.round(box.y * scale),
+    width: Math.round(box.width * scale),
+    height: Math.round(box.height * scale),
+  }
+}
+
 async function shot(target, name) {
   fs.mkdirSync(SHOTS, { recursive: true })
   const file = path.join(SHOTS, `${name}.png`)
@@ -115,6 +174,8 @@ async function processMining() {
 
   const benefits = page.locator('section').filter({ hasText: 'What this run gave you' }).first()
   await shot(benefits, 'pm-03-benefits')
+  await region(page, 'pm-02-overview', 'benefits', benefits)
+  await region(page, 'pm-02-overview', 'stats', page.getByText('TRANSACTIONS', { exact: true }).first())
 
   // Findings is deliberately absent: it is the AI write-up, and without a key
   // there is nothing genuine to capture. Add it here once the capture runs
@@ -127,9 +188,17 @@ async function processMining() {
     await page.waitForTimeout(1800)
     await clearEnvironmentNotices(page)
     await shot(page, name)
+    if (tab === 'Process map') await largestSvg(page, name, 'graph')
+    if (tab === 'Control tests') {
+      await region(page, name, 'panel', page.locator('section').filter({ hasText: 'Control tests' }).first())
+    }
   }
 
   await browser.close()
+
+  const manifest = path.join(SHOTS, 'regions.json')
+  fs.writeFileSync(manifest, JSON.stringify(REGIONS, null, 2) + '\n')
+  console.log(`  regions.json written (${Object.keys(REGIONS).length} shot(s))`)
 }
 
 const which = process.argv[2] ?? 'process-mining'
