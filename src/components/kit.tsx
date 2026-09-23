@@ -75,14 +75,17 @@ export const PulseDot: React.FC<{ size: number; appear?: number }> = ({ size, ap
  * a wider tracking, which is the only flourish — the mark itself stays exactly
  * as it is on the site.
  */
-export const Lockup: React.FC<{ scale?: number; start?: number; tagline?: boolean }> = ({
+export const Lockup: React.FC<{ scale?: number; start?: number; tagline?: boolean; trackFrom?: number }> = ({
   scale = 1,
   start = 0,
   tagline = true,
+  // How wide the tracking starts. A narrow frame starts tighter, or the
+  // still-widening word is wider than the frame and the reveal drifts off-centre.
+  trackFrom = 0.55,
 }) => {
   const frame = useCurrentFrame()
   const word = 'K REAL SOLUTIONS'
-  const track = interpolate(frame, [start, start + 40], [0.55, 0.2], { ...clamp, easing: easeOut })
+  const track = interpolate(frame, [start, start + 40], [trackFrom, 0.2], { ...clamp, easing: easeOut })
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 26 * scale }}>
       <PulseDot size={30 * scale} appear={start} />

@@ -19,47 +19,71 @@ import { C, FONT } from '../theme'
 type Node = (typeof data.nodes)[number]
 type Edge = (typeof data.edges)[number]
 
-const W = 1920
-const MAP_LEFT = 150
-const MAP_RIGHT = 1770
-const MID = 620
-const OFF = 175 // how far an off-path activity sits from the main line
-
 const happy = new Set(data.happyPath)
 const maxDepth = Math.max(...data.nodes.map(n => n.depth))
 const maxFreq = Math.max(...data.edges.map(e => e.freq))
 
-/** Off-path activities alternate below/above the happy path, by depth. */
+/** Off-path activities alternate either side of the happy path, by depth. */
 const offSide: Record<string, 1 | -1> = {}
 data.nodes
   .filter(n => !happy.has(n.label))
   .sort((a, b) => a.depth - b.depth)
   .forEach((n, i) => (offSide[n.label] = i % 2 === 0 ? 1 : -1))
 
-const posOf = (n: Node) => ({
-  x: MAP_LEFT + (n.depth / maxDepth) * (MAP_RIGHT - MAP_LEFT),
-  y: happy.has(n.label) ? MID : MID + OFF * offSide[n.label],
-})
 const byLabel = new Map(data.nodes.map(n => [n.label, n]))
 
 type Pt = { x: number; y: number }
 type Bez = [Pt, Pt, Pt, Pt]
 
-/** Every edge as a cubic, so a particle's position can be computed rather than measured. */
-const curveOf = (e: Edge): Bez | null => {
-  const a = byLabel.get(e.from)
-  const b = byLabel.get(e.to)
-  if (!a || !b || e.from === e.to) return null
-  const p0 = posOf(a)
-  const p3 = posOf(b)
-  if (e.back) {
-    // Rework runs back against the flow: arc it well clear of the main line.
-    const lift = -(150 + Math.abs(p3.x - p0.x) * 0.18) * (p0.y > MID || p3.y > MID ? -1 : 1)
-    return [p0, { x: p0.x, y: p0.y + lift }, { x: p3.x, y: p3.y + lift }, p3]
-  }
-  const dx = (p3.x - p0.x) * 0.45
-  return [p0, { x: p0.x + dx, y: p0.y }, { x: p3.x - dx, y: p3.y }, p3]
+/**
+ * The map's geometry for a frame shape. Landscape runs the process left to
+ * right; the 4:5 portrait runs it top to bottom, which is what the extra height
+ * is for — the same map, turned, rather than the landscape one shrunk.
+ */
+interface Geometry {
+  posOf: (n: Node) => Pt
+  curveOf: (e: Edge) => Bez | null
 }
+
+const geometry = (portrait: boolean): Geometry => {
+  // Flow axis (along the process) and cross axis (to the side of it).
+  const [flowFrom, flowTo, mid, off] = portrait ? [400, 1180, 540, 290] : [150, 1770, 620, 175]
+  const posOf = (n: Node): Pt => {
+    const along = flowFrom + (n.depth / maxDepth) * (flowTo - flowFrom)
+    const across = happy.has(n.label) ? mid : mid + off * offSide[n.label]
+    return portrait ? { x: across, y: along } : { x: along, y: across }
+  }
+  // Every edge as a cubic, so a particle's position can be computed rather than measured.
+  const curveOf = (e: Edge): Bez | null => {
+    const a = byLabel.get(e.from)
+    const b = byLabel.get(e.to)
+    if (!a || !b || e.from === e.to) return null
+    const p0 = posOf(a)
+    const p3 = posOf(b)
+    const acrossOf = (p: Pt) => (portrait ? p.x : p.y)
+    const alongOf = (p: Pt) => (portrait ? p.y : p.x)
+    if (e.back) {
+      // Rework runs back against the flow: arc it well clear of the main line,
+      // on the side its off-path end sits.
+      const span = Math.abs(alongOf(p3) - alongOf(p0))
+      const size = Math.min(portrait ? 200 : Infinity, 150 + span * 0.18)
+      const lift = size * (acrossOf(p0) > mid || acrossOf(p3) > mid ? 1 : -1)
+      return portrait
+        ? [p0, { x: p0.x + lift, y: p0.y }, { x: p3.x + lift, y: p3.y }, p3]
+        : [p0, { x: p0.x, y: p0.y + lift }, { x: p3.x, y: p3.y + lift }, p3]
+    }
+    if (portrait) {
+      const dy = (p3.y - p0.y) * 0.45
+      return [p0, { x: p0.x, y: p0.y + dy }, { x: p3.x, y: p3.y - dy }, p3]
+    }
+    const dx = (p3.x - p0.x) * 0.45
+    return [p0, { x: p0.x + dx, y: p0.y }, { x: p3.x - dx, y: p3.y }, p3]
+  }
+  return { posOf, curveOf }
+}
+
+const LANDSCAPE = geometry(false)
+const PORTRAIT = geometry(true)
 
 const bez = ([p0, p1, p2, p3]: Bez, t: number): Pt => {
   const u = 1 - t
@@ -91,17 +115,19 @@ const money = (n: number) =>
 
 export const Mining: React.FC = () => {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
+  const { fps, width, height } = useVideoConfig()
+  const portrait = height > width
+  const { posOf, curveOf } = portrait ? PORTRAIT : LANDSCAPE
   const fade = useSceneFade()
 
   // Beat C: the map steps back to the left to make room for the findings.
   const aside = prog(frame, PANEL_AT - 10, PANEL_AT + 26, easeInOut)
-  // Beside an 780px panel the map has ~1,000px; 0.57 fits its full width
-  // (nodes included) with a margin, rather than letting the first activity
-  // slide off the left edge.
-  const mapScale = 1 - aside * 0.43
-  const mapShiftX = -aside * 414
-  const mapShiftY = aside * 40
+  // Landscape: beside a 780px panel the map has ~1,000px; 0.57 fits its full
+  // width (nodes included) with a margin. Portrait: the upright map takes a
+  // ~460px left column beside a 520px panel.
+  const mapScale = 1 - aside * (portrait ? 0.38 : 0.43)
+  const mapShiftX = -aside * (portrait ? 278 : 414)
+  const mapShiftY = aside * (portrait ? -10 : 40)
 
   const lit = (label: string) =>
     FINDINGS.some(x => x.node === label && frame >= x.at) ? 1 : 0
@@ -122,24 +148,27 @@ export const Mining: React.FC = () => {
       <div
         style={{
           position: 'absolute',
-          left: 150,
-          top: 96,
+          left: portrait ? 60 : 150,
+          right: portrait ? 60 : undefined,
+          top: portrait ? 90 : 96,
           opacity: 1 - prog(frame, 150, 176),
           transform: `translateY(${-prog(frame, 150, 176) * 30}px)`,
         }}
       >
-        <Kicker eyebrow="Process mining" headline="Every transaction. Not a sample." start={4} size={76} />
+        <Kicker eyebrow="Process mining" headline="Every transaction. Not a sample." start={4} size={portrait ? 70 : 76} />
       </div>
 
       {/* B: the figures, straight off the engine. */}
       <div
         style={{
           position: 'absolute',
-          left: 150,
-          right: 150,
-          top: 110,
+          left: portrait ? 60 : 150,
+          right: portrait ? 60 : 150,
+          top: portrait ? 80 : 110,
           display: 'flex',
-          gap: 64,
+          flexWrap: 'wrap',
+          columnGap: portrait ? 56 : 64,
+          rowGap: 34,
           opacity: prog(frame, 168, 190) * (1 - aside * 0.0),
           transform: `translateY(${(1 - prog(frame, 168, 196)) * 24}px)`,
         }}
@@ -152,14 +181,14 @@ export const Mining: React.FC = () => {
           { v: <Count to={data.kpis.valueAtRisk} start={200} format={money} />, l: 'value at risk', c: C.exception },
         ].map((k, i) => (
           <div key={i} style={{ opacity: prog(frame, 170 + i * 5, 186 + i * 5) }}>
-            <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 64, color: k.c, lineHeight: 1 }}>
+            <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: portrait ? 60 : 64, color: k.c, lineHeight: 1 }}>
               {k.v}
             </div>
             <div
               style={{
                 marginTop: 10,
                 fontFamily: FONT.mono,
-                fontSize: 17,
+                fontSize: portrait ? 15 : 17,
                 letterSpacing: '0.16em',
                 textTransform: 'uppercase',
                 color: C.soft,
@@ -173,8 +202,8 @@ export const Mining: React.FC = () => {
 
       {/* The map. */}
       <svg
-        width={W}
-        height={1080}
+        width={width}
+        height={height}
         style={{
           position: 'absolute',
           inset: 0,
@@ -313,15 +342,16 @@ export const Mining: React.FC = () => {
       <div
         style={{
           position: 'absolute',
-          left: 150,
-          bottom: 92,
+          left: portrait ? 60 : 150,
+          bottom: portrait ? 64 : 92,
           fontFamily: FONT.mono,
-          fontSize: 19,
+          fontSize: portrait ? 16 : 19,
           letterSpacing: '0.12em',
           color: C.soft,
           opacity: prog(frame, 150, 170) * (1 - aside),
           display: 'flex',
-          gap: 36,
+          flexDirection: portrait ? 'column' : 'row',
+          gap: portrait ? 10 : 36,
         }}
       >
         <span>
@@ -333,7 +363,7 @@ export const Mining: React.FC = () => {
       </div>
 
       {/* C: the findings. */}
-      <FindingsPanel frame={frame} />
+      <FindingsPanel frame={frame} portrait={portrait} />
     </AbsoluteFill>
   )
 }
@@ -344,7 +374,7 @@ const SEV: Record<string, { label: string; colour: string }> = {
   medium: { label: 'MEDIUM', colour: C.exception },
 }
 
-const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
+const FindingsPanel: React.FC<{ frame: number; portrait: boolean }> = ({ frame, portrait }) => {
   const enter = prog(frame, PANEL_AT, PANEL_AT + 24)
   const scanning = frame >= PANEL_AT + 6 && frame < FINDINGS[0].at
   const scanP = prog(frame, PANEL_AT + 6, FINDINGS[0].at)
@@ -352,9 +382,9 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
     <div
       style={{
         position: 'absolute',
-        top: 250,
-        right: 60,
-        width: 780,
+        top: portrait ? 330 : 250,
+        right: portrait ? 30 : 60,
+        width: portrait ? 530 : 780,
         opacity: enter,
         transform: `translateX(${(1 - enter) * 80}px)`,
       }}
@@ -364,15 +394,16 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
         <div
           style={{
             fontFamily: FONT.mono,
-            fontSize: 22,
+            fontSize: portrait ? 19 : 22,
             letterSpacing: '0.3em',
             color: C.assureBright,
+            whiteSpace: 'nowrap',
           }}
         >
           AI FINDINGS
         </div>
         <div style={{ flex: 1, height: 1, background: C.hair }} />
-        <div style={{ fontFamily: FONT.mono, fontSize: 16, color: C.soft }}>
+        <div style={{ fontFamily: FONT.mono, fontSize: portrait ? 14 : 16, color: C.soft, whiteSpace: 'nowrap' }}>
           {scanning ? `reading ${Math.round(scanP * 2671).toLocaleString('en-GB')} events…` : '398 transactions · 9 tests'}
         </div>
       </div>
@@ -398,7 +429,7 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
         />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: portrait ? 14 : 18 }}>
         {FINDINGS.map(({ f, at }, i) => {
           const p = prog(frame, at, at + 16)
           if (frame < at) return null
@@ -414,10 +445,10 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
                 border: `1px solid ${sev.colour}55`,
                 borderLeft: `4px solid ${sev.colour}`,
                 borderRadius: 12,
-                padding: '20px 26px',
+                padding: portrait ? '16px 20px' : '20px 26px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: portrait ? 'wrap' : 'nowrap' }}>
                 <span
                   style={{
                     fontFamily: FONT.mono,
@@ -429,7 +460,18 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
                 >
                   {sev.label}
                 </span>
-                <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 33, color: '#fff' }}>
+                <span
+                  style={{
+                    fontFamily: FONT.display,
+                    fontWeight: 700,
+                    fontSize: portrait ? 29 : 33,
+                    lineHeight: 1.15,
+                    color: '#fff',
+                    // Portrait: the title takes its own line under severity and value.
+                    order: portrait ? 3 : 0,
+                    flexBasis: portrait ? '100%' : 'auto',
+                  }}
+                >
                   {f.title.slice(0, chars)}
                   <span style={{ opacity: chars < f.title.length ? 1 : 0, color: C.assureBright }}>▍</span>
                 </span>
@@ -439,7 +481,7 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
                     style={{
                       fontFamily: FONT.display,
                       fontWeight: 700,
-                      fontSize: 33,
+                      fontSize: portrait ? 29 : 33,
                       color: sev.colour,
                       opacity: prog(frame, at + 16, at + 26),
                     }}
@@ -452,7 +494,7 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
                 style={{
                   marginTop: 8,
                   fontFamily: FONT.sans,
-                  fontSize: 21,
+                  fontSize: portrait ? 18 : 21,
                   lineHeight: 1.35,
                   color: C.text,
                   opacity: prog(frame, at + 14, at + 28),
@@ -468,10 +510,10 @@ const FindingsPanel: React.FC<{ frame: number }> = ({ frame }) => {
       {/* The line that lands it. */}
       <div
         style={{
-          marginTop: 30,
+          marginTop: portrait ? 22 : 30,
           fontFamily: FONT.display,
           fontWeight: 700,
-          fontSize: 34,
+          fontSize: portrait ? 30 : 34,
           color: '#fff',
           opacity: prog(frame, 492, 510),
           transform: `translateY(${(1 - prog(frame, 492, 514)) * 16}px)`,

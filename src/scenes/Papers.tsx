@@ -46,7 +46,6 @@ const RISKS: Risk[] = [
 // From the portal's figure, in its own pixels (1880 wide): band centre-lines and band edges.
 const SRC_R: Record<Band, number> = { Critical: 227, High: 421, Moderate: 629, Low: 822 }
 const SRC_RINGS = [136, 318, 525, 732, 912]
-const K = 0.62 // film scale of that geometry
 
 const ASSURE_COLOUR: Record<Assurance, string> = {
   Limited: C.paperRed,
@@ -56,15 +55,55 @@ const ASSURE_COLOUR: Record<Assurance, string> = {
 }
 const FILL: Record<Assurance, number> = { Limited: 0.3, Partial: 0.6, Reasonable: 1, 'Not assessed': 0 }
 
-// Stage geometry.
-const PAPER = { x: 190, y: 230, w: 1540, h: 800 }
-const TABLE_TOP = 150 // inside the paper
-const ROW_H = 66
-const CX = PAPER.w / 2
-const BASE = 690 // baseline of the orbital field, inside the paper
+// Stage geometry, per frame shape. Portrait keeps the same paper and the same
+// orbit, re-composed: a narrower register (the four columns that carry the
+// question) and the answer called out below the field rather than beside it.
+interface Layout {
+  paper: { x: number; y: number; w: number; h: number }
+  tableTop: number // inside the paper
+  rowH: number
+  cols: string[]
+  k: number // film scale of the portal's geometry
+  cx: number
+  base: number // baseline of the orbital field, inside the paper
+  baseHalf: number
+  callout: { x: number; y: number; w: number; h: number }
+  lead: { x: number; y: number } // where the leader from PR01 turns, and ends
+  kicker: { left: number; top: number; size: number }
+  button: { right: number; bottom: number }
+}
 
-// The answer, top right of the paper: clear of the outermost ring at that height.
-const CALLOUT = { x: CX + 400, y: 40, w: 340, h: 150 }
+const LANDSCAPE: Layout = {
+  paper: { x: 190, y: 230, w: 1540, h: 800 },
+  tableTop: 150,
+  rowH: 66,
+  cols: ['7%', '37%', '17%', '9%', '9%', '11%', '10%'],
+  k: 0.62,
+  cx: 770,
+  base: 690,
+  baseHalf: 590,
+  // Top right of the paper: clear of the outermost ring at that height.
+  callout: { x: 1170, y: 40, w: 340, h: 150 },
+  lead: { x: 1330, y: 190 },
+  kicker: { left: 190, top: 70, size: 58 },
+  button: { right: 230, bottom: 110 },
+}
+
+const PORTRAIT: Layout = {
+  paper: { x: 40, y: 330, w: 1000, h: 960 },
+  tableTop: 150,
+  rowH: 82,
+  cols: ['11%', '52%', '17%', '20%'],
+  k: 0.5,
+  cx: 500,
+  base: 620,
+  baseHalf: 470,
+  // Below the baseline, right of the band labels.
+  callout: { x: 560, y: 700, w: 400, h: 150 },
+  lead: { x: 740, y: 700 },
+  kicker: { left: 60, top: 64, size: 52 },
+  button: { right: 90, bottom: 96 },
+}
 
 const T_BUTTON = 176
 const T_CLICK = 196
@@ -72,7 +111,10 @@ const T_FLY = 206
 
 export const Papers: React.FC = () => {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
+  const { fps, width, height } = useVideoConfig()
+  const portrait = height > width
+  const L = portrait ? PORTRAIT : LANDSCAPE
+  const { paper: PAPER, tableTop: TABLE_TOP, rowH: ROW_H, k: K, cx: CX, base: BASE, callout: CALLOUT } = L
   const fade = useSceneFade()
 
   const paperIn = spring({ frame: frame - 26, fps, config: { damping: 18, mass: 0.9 } })
@@ -87,22 +129,28 @@ export const Papers: React.FC = () => {
     const R = SRC_R[r.residual] * K
     return { x: CX + Math.cos(rad) * R, y: BASE - Math.sin(rad) * R }
   }
+  const header = portrait
+    ? ['REF', 'PRINCIPAL RISK', 'RESIDUAL', 'ASSURANCE']
+    : ['REF', 'PRINCIPAL RISK', 'OWNER', 'INHERENT', 'RESIDUAL', 'ASSURANCE', 'MOVEMENT']
+  const cellsOf = (r: Risk) =>
+    portrait ? ['', r.risk, r.residual, r.assurance] : ['', r.risk, r.owner, r.inherent, r.residual, r.assurance, r.movement]
 
   return (
     <AbsoluteFill style={{ background: C.bg, opacity: fade, overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', left: 190, top: 70, opacity: 1 - prog(frame, T_FLY + 40, T_FLY + 60) }}>
-        <Kicker eyebrow="Board papers" headline="Forty pages. One question nobody can answer." start={4} size={58} />
+      <div style={{ position: 'absolute', left: L.kicker.left, right: L.kicker.left, top: L.kicker.top, opacity: 1 - prog(frame, T_FLY + 40, T_FLY + 60) }}>
+        <Kicker eyebrow="Board papers" headline="Forty pages. One question nobody can answer." start={4} size={L.kicker.size} />
       </div>
       <div
         style={{
           position: 'absolute',
-          left: 190,
-          top: 76,
+          left: L.kicker.left,
+          right: L.kicker.left,
+          top: L.kicker.top + 6,
           opacity: prog(frame, T_FLY + 64, T_FLY + 84),
           transform: `translateY(${(1 - prog(frame, T_FLY + 64, T_FLY + 90)) * 20}px)`,
         }}
       >
-        <Kicker eyebrow="Board papers" headline="Which risk is closest to us? Now you can see it." start={T_FLY + 62} size={58} />
+        <Kicker eyebrow="Board papers" headline="Which risk is closest to us? Now you can see it." start={T_FLY + 62} size={L.kicker.size} />
       </div>
 
       {/* The paper itself, on a dark stage. */}
@@ -134,13 +182,13 @@ export const Papers: React.FC = () => {
 
         {/* The register. */}
         <div style={{ position: 'absolute', left: 56, right: 56, top: TABLE_TOP, opacity: 1 - tableOut, filter: `blur(${tableOut * 6}px)` }}>
-          <Row header cells={['REF', 'PRINCIPAL RISK', 'OWNER', 'INHERENT', 'RESIDUAL', 'ASSURANCE', 'MOVEMENT']} />
+          <Row header cells={header} cols={L.cols} rowH={ROW_H} />
           {RISKS.map((r, i) => {
             const onIt = Math.max(0, 1 - Math.abs(scanRow - i) * 1.6)
             return (
               <div key={r.ref} style={{ position: 'relative' }}>
                 <div style={{ position: 'absolute', inset: 0, background: `rgba(156,43,28,${0.07 * onIt})` }} />
-                <Row cells={['', r.risk, r.owner, r.inherent, r.residual, r.assurance, r.movement]} />
+                <Row cells={cellsOf(r)} cols={L.cols} rowH={ROW_H} />
               </div>
             )
           })}
@@ -179,7 +227,7 @@ export const Papers: React.FC = () => {
               opacity={0.7 * prog(frame, T_FLY + 40 + i * 4, T_FLY + 60 + i * 4)}
             />
           ))}
-          <line x1={CX - 590} y1={BASE} x2={CX + 590} y2={BASE} stroke={C.paperText} strokeWidth={2} opacity={orbitIn} />
+          <line x1={CX - L.baseHalf} y1={BASE} x2={CX + L.baseHalf} y2={BASE} stroke={C.paperText} strokeWidth={2} opacity={orbitIn} />
           {(Object.keys(SRC_R) as Band[]).map(b => (
             <text
               key={b}
@@ -201,7 +249,9 @@ export const Papers: React.FC = () => {
 
           {/* Each risk: starts as its row's reference, flies to its orbit. */}
           {RISKS.map((r, i) => {
-            const from = { x: 56 + 30, y: TABLE_TOP + ROW_H * (i + 1) + ROW_H / 2 - 8 }
+            // Centred in its row: below the header, text baseline just under the
+            // middle. Each row and the header carry a 1px bottom border.
+            const from = { x: 56 + 30, y: TABLE_TOP + 39 + (ROW_H + 1) * i + ROW_H / 2 + 6 }
             const to = pos(r)
             const delay = T_FLY + i * 5
             const s = spring({ frame: frame - delay, fps, config: { damping: 15, mass: 0.8 } })
@@ -263,7 +313,7 @@ export const Papers: React.FC = () => {
           {/* The answer, called out. */}
           <g opacity={prog(frame, T_FLY + 96, T_FLY + 116)}>
             <path
-              d={`M${pos(RISKS[0]).x + 28},${pos(RISKS[0]).y} L${CX + 560},${pos(RISKS[0]).y} L${CX + 560},${CALLOUT.y + CALLOUT.h}`}
+              d={`M${pos(RISKS[0]).x + 28},${pos(RISKS[0]).y} L${L.lead.x},${pos(RISKS[0]).y} L${L.lead.x},${L.lead.y}`}
               fill="none"
               stroke={C.paperRed}
               strokeWidth={1.6}
@@ -306,18 +356,16 @@ export const Papers: React.FC = () => {
         </div>
       </div>
 
-      <TransformButton frame={frame} />
+      <TransformButton frame={frame} at={L.button} />
     </AbsoluteFill>
   )
 }
 
-const COLS = ['7%', '37%', '17%', '9%', '9%', '11%', '10%']
-
-const Row: React.FC<{ cells: string[]; header?: boolean }> = ({ cells, header }) => (
+const Row: React.FC<{ cells: string[]; cols: string[]; rowH: number; header?: boolean }> = ({ cells, cols, rowH, header }) => (
   <div
     style={{
       display: 'flex',
-      height: header ? 38 : ROW_H,
+      height: header ? 38 : rowH,
       alignItems: header ? 'flex-end' : 'center',
       borderBottom: `1px solid ${header ? C.paperText : C.paperRule}`,
       paddingBottom: header ? 8 : 0,
@@ -327,7 +375,7 @@ const Row: React.FC<{ cells: string[]; header?: boolean }> = ({ cells, header })
       <div
         key={i}
         style={{
-          width: COLS[i],
+          width: cols[i],
           paddingRight: 14,
           fontFamily: header ? FONT.mono : FONT.sans,
           fontWeight: header ? 600 : 400,
@@ -344,13 +392,13 @@ const Row: React.FC<{ cells: string[]; header?: boolean }> = ({ cells, header })
 )
 
 /** The portal's own button, pressed. */
-const TransformButton: React.FC<{ frame: number }> = ({ frame }) => {
+const TransformButton: React.FC<{ frame: number; at: { right: number; bottom: number } }> = ({ frame, at }) => {
   const shown = prog(frame, T_BUTTON, T_BUTTON + 12) * (1 - prog(frame, T_CLICK + 20, T_CLICK + 32))
   const press = frame >= T_CLICK && frame < T_CLICK + 6 ? 0.94 : 1
   const ripple = prog(frame, T_CLICK, T_CLICK + 24, easeOut)
   const cursorT = prog(frame, T_BUTTON + 2, T_CLICK - 2, easeInOut)
   return (
-    <div style={{ position: 'absolute', right: 230, bottom: 110, opacity: shown }}>
+    <div style={{ position: 'absolute', right: at.right, bottom: at.bottom, opacity: shown }}>
       <div
         style={{
           position: 'relative',

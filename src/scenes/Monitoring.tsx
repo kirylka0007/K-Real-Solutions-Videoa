@@ -1,4 +1,4 @@
-import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion'
 import { clamp, easeInOut, easeOut, prog, useSceneFade } from '../components/kit'
 import { C, FONT } from '../theme'
 
@@ -122,10 +122,16 @@ const T = {
   typeTo: 452,
 }
 
-// Stage.
-const X0 = 120
-const W = 1680
-const TOP = 250
+// Stage, per frame shape. Portrait keeps every layer and every figure; it
+// stacks what landscape sets side by side.
+interface Stage {
+  portrait: boolean
+  x0: number
+  w: number
+  top: number
+}
+const STAGE_LANDSCAPE: Stage = { portrait: false, x0: 120, w: 1680, top: 250 }
+const STAGE_PORTRAIT: Stage = { portrait: true, x0: 40, w: 1000, top: 250 }
 
 // ---------------------------------------------------------------------------
 // Pieces
@@ -243,7 +249,8 @@ const HEADLINES: Array<{ at: number; text: string }> = [
   { at: T.draft - 6, text: 'AI drafts. The auditor decides.' },
 ]
 
-const Header: React.FC<{ frame: number }> = ({ frame }) => {
+const Header: React.FC<{ frame: number; st: Stage }> = ({ frame, st }) => {
+  const P = st.portrait
   const crumbs = [
     { at: 0, text: 'Continuous monitoring' },
     { at: T.finance, text: 'Finance' },
@@ -251,15 +258,17 @@ const Header: React.FC<{ frame: number }> = ({ frame }) => {
     { at: T.exception, text: 'AP-2026-1111' },
   ]
   return (
-    <div style={{ position: 'absolute', left: X0, top: 64, width: W }}>
+    <div style={{ position: 'absolute', left: P ? 56 : st.x0, top: P ? 56 : 64, width: P ? 968 : st.w }}>
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
-          gap: 16,
+          gap: P ? 12 : 16,
+          rowGap: 6,
           fontFamily: FONT.mono,
-          fontSize: 21,
-          letterSpacing: '0.26em',
+          fontSize: P ? 16 : 21,
+          letterSpacing: P ? '0.2em' : '0.26em',
           textTransform: 'uppercase',
           color: C.assureBright,
         }}
@@ -268,13 +277,13 @@ const Header: React.FC<{ frame: number }> = ({ frame }) => {
           const p = prog(frame, c.at, c.at + 12)
           return p > 0 ? (
             <span key={i} style={{ opacity: p, color: i === 0 ? C.assureBright : C.text, whiteSpace: 'nowrap' }}>
-              {i > 0 && <span style={{ color: C.soft, marginRight: 16 }}>›</span>}
+              {i > 0 && <span style={{ color: C.soft, marginRight: P ? 12 : 16 }}>›</span>}
               {c.text}
             </span>
           ) : null
         })}
       </div>
-      <div style={{ position: 'relative', height: 90, marginTop: 18 }}>
+      <div style={{ position: 'relative', height: P ? 120 : 90, marginTop: P ? 14 : 18 }}>
         {HEADLINES.map((h, hi) => {
           const next = HEADLINES[hi + 1]
           const out = next ? prog(frame, next.at - 6, next.at + 4) : 0
@@ -287,13 +296,13 @@ const Header: React.FC<{ frame: number }> = ({ frame }) => {
                 inset: 0,
                 fontFamily: FONT.display,
                 fontWeight: 700,
-                fontSize: 70,
+                fontSize: P ? 54 : 70,
                 lineHeight: 1.04,
                 letterSpacing: '-0.025em',
                 color: '#fff',
                 opacity: 1 - out,
                 transform: `translateY(${-out * 24}px)`,
-                whiteSpace: 'nowrap',
+                whiteSpace: P ? 'normal' : 'nowrap',
               }}
             >
               {h.text.split(' ').map((w, i) => {
@@ -322,9 +331,16 @@ const TILE_H = 440
 const TILE_Y = 330
 const tileX = (i: number) => (1920 - (5 * TILE_W + 4 * TILE_GAP)) / 2 + i * (TILE_W + TILE_GAP)
 
-const Tiles: React.FC<{ frame: number }> = ({ frame }) => {
+/** Landscape: five columns. Portrait: five full-width rows, one under another. */
+const tileBox = (i: number, st: Stage) =>
+  st.portrait
+    ? { left: st.x0, top: 250 + i * 186, width: st.w, height: 168 }
+    : { left: tileX(i), top: TILE_Y, width: TILE_W, height: TILE_H }
+
+const Tiles: React.FC<{ frame: number; st: Stage }> = ({ frame, st }) => {
   const leave = prog(frame, T.toFinance + 2, T.finance + 14, easeInOut)
   if (leave >= 1) return null
+  const P = st.portrait
   return (
     <>
       {ENTITIES.map((e, i) => {
@@ -332,62 +348,69 @@ const Tiles: React.FC<{ frame: number }> = ({ frame }) => {
         const isFin = i === 0
         const hover = isFin ? prog(frame, T.toFinance - 16, T.toFinance - 4) : 0
         const count = (m: Move) => Math.round(m.now * prog(frame, T.tiles + 10 + i * 5, T.tiles + 46 + i * 5))
+        const box = tileBox(i, st)
+        const kpis = [
+          [e.found, 'found · 30 days'],
+          [e.confirmed, 'confirmed & unresolved'],
+        ] as const
+        const squares = (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {[0, 1, 2, 3].map(k => (
+              <span
+                key={k}
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 4,
+                  background: k < e.flagged ? C.exception : C.assure,
+                  opacity: prog(frame, T.tiles + 30 + i * 5 + k * 3, T.tiles + 38 + i * 5 + k * 3),
+                }}
+              />
+            ))}
+            <span style={{ fontFamily: FONT.mono, fontSize: 16, color: C.soft, marginLeft: 8 }}>
+              {e.flagged} of 4 flagged
+            </span>
+          </div>
+        )
         return (
           <div
             key={e.name}
             style={{
               position: 'absolute',
-              left: tileX(i),
-              top: TILE_Y + (1 - inP) * 40,
-              width: TILE_W,
-              height: TILE_H,
+              ...box,
+              top: box.top + (1 - inP) * 40,
               opacity: inP * (isFin ? 1 - prog(frame, T.finance, T.finance + 10) : 1 - leave),
-              transform: isFin ? `scale(${1 + hover * 0.03 + leave * 0.12})` : `translateY(${leave * 40}px)`,
+              transform: isFin ? `scale(${1 + hover * 0.03 + leave * (P ? 0.05 : 0.12)})` : `translateY(${leave * 40}px)`,
               background: C.ink,
               border: `1.5px solid ${isFin ? `rgba(25,201,180,${0.2 + hover * 0.8})` : C.hair}`,
               borderRadius: 12,
-              padding: '30px 28px',
+              padding: P ? '24px 30px' : '30px 28px',
               boxSizing: 'border-box',
               boxShadow: isFin && hover > 0 ? `0 0 ${50 * hover}px ${C.assure}44` : 'none',
+              display: P ? 'flex' : 'block',
+              alignItems: 'center',
+              gap: 20,
             }}
           >
-            <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 34, color: '#fff' }}>{e.name}</div>
-            <div style={{ fontFamily: FONT.mono, fontSize: 15, color: C.soft, marginTop: 8, whiteSpace: 'nowrap' }}>
-              4 of {e.universe} controls monitored
+            <div style={{ width: P ? 330 : 'auto', flex: 'none' }}>
+              <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: P ? 32 : 34, color: '#fff' }}>{e.name}</div>
+              <div style={{ fontFamily: FONT.mono, fontSize: 15, color: C.soft, marginTop: 8, whiteSpace: 'nowrap' }}>
+                4 of {e.universe} controls monitored
+              </div>
+              {P && <div style={{ marginTop: 18 }}>{squares}</div>}
             </div>
-            {(
-              [
-                [e.found, 'found · 30 days'],
-                [e.confirmed, 'confirmed & unresolved'],
-              ] as const
-            ).map(([m, label], k) => (
-              <div key={k} style={{ marginTop: k === 0 ? 34 : 22 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, fontFamily: FONT.mono }}>
-                  <span style={{ fontSize: 64, fontWeight: 600, color: '#fff', lineHeight: 1 }}>{count(m)}</span>
+            {kpis.map(([m, label], k) => (
+              <div key={k} style={P ? { flex: 1 } : { marginTop: k === 0 ? 34 : 22 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, fontFamily: FONT.mono }}>
+                  <span style={{ fontSize: P ? 54 : 64, fontWeight: 600, color: '#fff', lineHeight: 1 }}>{count(m)}</span>
                   <span style={{ opacity: prog(frame, T.tiles + 40 + i * 5, T.tiles + 52 + i * 5) }}>
-                    <MoveTag m={m} size={22} />
+                    <MoveTag m={m} size={P ? 20 : 22} />
                   </span>
                 </div>
-                <div style={{ fontFamily: FONT.sans, fontSize: 19, color: C.soft, marginTop: 6 }}>{label}</div>
+                <div style={{ fontFamily: FONT.sans, fontSize: P ? 17 : 19, color: C.soft, marginTop: 6 }}>{label}</div>
               </div>
             ))}
-            <div style={{ position: 'absolute', left: 28, bottom: 28, display: 'flex', alignItems: 'center', gap: 8 }}>
-              {[0, 1, 2, 3].map(k => (
-                <span
-                  key={k}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 4,
-                    background: k < e.flagged ? C.exception : C.assure,
-                    opacity: prog(frame, T.tiles + 30 + i * 5 + k * 3, T.tiles + 38 + i * 5 + k * 3),
-                  }}
-                />
-              ))}
-              <span style={{ fontFamily: FONT.mono, fontSize: 16, color: C.soft, marginLeft: 8 }}>
-                {e.flagged} of 4 flagged
-              </span>
-            </div>
+            {!P && <div style={{ position: 'absolute', left: 28, bottom: 28 }}>{squares}</div>}
           </div>
         )
       })}
@@ -424,52 +447,55 @@ const Spark: React.FC<{ series: number[]; w: number; h: number; draw: number; fl
   )
 }
 
-const FinancePanel: React.FC<{ frame: number }> = ({ frame }) => {
+const FinancePanel: React.FC<{ frame: number; st: Stage }> = ({ frame, st }) => {
   const inP = prog(frame, T.finance, T.finance + 20)
   const leave = prog(frame, T.toControl + 2, T.control + 12, easeInOut)
   if (inP <= 0 || leave >= 1) return null
+  const P = st.portrait
   const rowIn = (k: number) => prog(frame, T.finance + 24 + k * 6, T.finance + 40 + k * 6)
   const hover = prog(frame, T.toControl - 16, T.toControl - 4)
   return (
     <div
       style={{
         position: 'absolute',
-        left: X0,
-        top: TOP,
-        width: W,
+        left: st.x0,
+        top: st.top,
+        width: st.w,
         opacity: inP * (1 - leave),
         transform: `scale(${0.96 + inP * 0.04 + leave * 0.03})`,
         transformOrigin: '10% 30%',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 24, marginBottom: 18 }}>
-        <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 44, color: '#fff' }}>Finance</span>
-        <span style={{ fontFamily: FONT.mono, fontSize: 21, color: C.soft }}>4 of 23 controls monitored</span>
-        <span style={{ marginLeft: 'auto', fontFamily: FONT.mono, fontSize: 21, color: C.soft }}>3 of 4 flagged</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: P ? 18 : 24, marginBottom: P ? 14 : 18 }}>
+        <span style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: P ? 40 : 44, color: '#fff' }}>Finance</span>
+        <span style={{ fontFamily: FONT.mono, fontSize: P ? 17 : 21, color: C.soft }}>4 of 23 controls monitored</span>
+        <span style={{ marginLeft: 'auto', fontFamily: FONT.mono, fontSize: P ? 17 : 21, color: C.soft }}>3 of 4 flagged</span>
       </div>
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(6, 1fr)',
+          // Portrait: six KPIs as three by two, each still with its arrow.
+          gridTemplateColumns: P ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)',
+          rowGap: P ? 22 : 0,
           background: C.ink,
           border: `1.5px solid ${C.hair}`,
           borderRadius: 12,
-          padding: '26px 30px',
-          marginBottom: 20,
+          padding: P ? '22px 26px' : '26px 30px',
+          marginBottom: P ? 14 : 20,
         }}
       >
         {FINANCE_KPIS.map((k, i) => {
           const p = prog(frame, T.finance + 8 + i * 3, T.finance + 22 + i * 3)
           return (
             <div key={i} style={{ opacity: p, transform: `translateY(${(1 - p) * 14}px)` }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, fontFamily: FONT.mono }}>
-                <span style={{ fontSize: 56, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: P ? 10 : 12, fontFamily: FONT.mono }}>
+                <span style={{ fontSize: P ? 46 : 56, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
                   {Math.round(k.m.now * prog(frame, T.finance + 10, T.finance + 34))}
                 </span>
-                {k.unit && <span style={{ fontSize: 22, color: C.soft }}>{k.unit}</span>}
-                <MoveTag m={k.m} size={21} />
+                {k.unit && <span style={{ fontSize: P ? 19 : 22, color: C.soft }}>{k.unit}</span>}
+                <MoveTag m={k.m} size={P ? 19 : 21} />
               </div>
-              <div style={{ fontFamily: FONT.sans, fontSize: 18, color: C.soft, marginTop: 10, lineHeight: 1.25, paddingRight: 16 }}>
+              <div style={{ fontFamily: FONT.sans, fontSize: P ? 16 : 18, color: C.soft, marginTop: P ? 8 : 10, lineHeight: 1.25, paddingRight: 16 }}>
                 {k.label}
               </div>
             </div>
@@ -480,16 +506,56 @@ const FinancePanel: React.FC<{ frame: number }> = ({ frame }) => {
         const p = rowIn(k)
         const flagged = c.flags.length > 0
         const isTarget = k === 0
+        const title = (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: P ? 14 : 16, letterSpacing: '0.18em', color: C.soft }}>
+              FINANCE · {c.kind}
+            </div>
+            <div style={{ fontFamily: FONT.display, fontWeight: 600, fontSize: P ? 24 : 27, color: '#fff', marginTop: P ? 6 : 8, whiteSpace: 'nowrap' }}>
+              {c.name}
+            </div>
+          </div>
+        )
+        const spark = (
+          <Spark series={c.series} w={P ? 200 : 210} h={P ? 54 : 62} draw={prog(frame, T.finance + 34 + k * 6, T.finance + 64 + k * 6)} flagged={flagged} />
+        )
+        const figures = (
+          <div style={{ width: P ? 'auto' : 330, textAlign: P ? 'left' : 'right', fontFamily: FONT.mono, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: P ? 26 : 30, fontWeight: 600, color: '#fff' }}>
+              {c.found} <span style={{ fontSize: P ? 16 : 18, fontWeight: 400, color: C.soft }}>found</span>
+            </div>
+            <div style={{ fontSize: P ? 14 : 16, color: C.soft, marginTop: 4 }}>
+              {c.outstanding} outstanding · {c.confirmed} confirmed
+            </div>
+          </div>
+        )
+        const chips = (
+          <div style={{ width: P ? 'auto' : 280, marginLeft: P ? 'auto' : 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+            {flagged ? (
+              c.flags.map((f, fi) => (
+                <Chip
+                  key={f}
+                  text={f}
+                  size={P ? 13 : 15}
+                  style={{ opacity: prog(frame, T.finance + 50 + k * 6 + fi * 5, T.finance + 58 + k * 6 + fi * 5) }}
+                />
+              ))
+            ) : (
+              <span style={{ fontFamily: FONT.mono, fontSize: P ? 15 : 17, color: C.soft }}>no flag raised</span>
+            )}
+          </div>
+        )
         return (
           <div
             key={k}
             style={{
               display: 'flex',
-              alignItems: 'center',
-              gap: 30,
-              height: 104,
-              marginBottom: 12,
-              padding: '0 30px',
+              flexDirection: P ? 'column' : 'row',
+              alignItems: P ? 'stretch' : 'center',
+              gap: P ? 10 : 30,
+              height: P ? 'auto' : 104,
+              marginBottom: P ? 10 : 12,
+              padding: P ? '14px 24px' : '0 30px',
               background: C.ink,
               border: `1.5px solid ${isTarget ? `rgba(25,201,180,${0.15 + hover * 0.85})` : C.hair}`,
               borderLeft: `5px solid ${flagged ? C.exception : C.ink3}`,
@@ -499,32 +565,23 @@ const FinancePanel: React.FC<{ frame: number }> = ({ frame }) => {
               boxShadow: isTarget && hover > 0 ? `0 0 ${40 * hover}px ${C.assure}40` : 'none',
             }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: FONT.mono, fontSize: 16, letterSpacing: '0.18em', color: C.soft }}>
-                FINANCE · {c.kind}
-              </div>
-              <div style={{ fontFamily: FONT.display, fontWeight: 600, fontSize: 27, color: '#fff', marginTop: 8, whiteSpace: 'nowrap' }}>
-                {c.name}
-              </div>
-            </div>
-            <Spark series={c.series} w={210} h={62} draw={prog(frame, T.finance + 34 + k * 6, T.finance + 64 + k * 6)} flagged={flagged} />
-            <div style={{ width: 330, textAlign: 'right', fontFamily: FONT.mono, whiteSpace: 'nowrap' }}>
-              <div style={{ fontSize: 30, fontWeight: 600, color: '#fff' }}>
-                {c.found} <span style={{ fontSize: 18, fontWeight: 400, color: C.soft }}>found</span>
-              </div>
-              <div style={{ fontSize: 16, color: C.soft, marginTop: 4 }}>
-                {c.outstanding} outstanding · {c.confirmed} confirmed
-              </div>
-            </div>
-            <div style={{ width: 280, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-              {flagged ? (
-                c.flags.map((f, fi) => (
-                  <Chip key={f} text={f} size={15} style={{ opacity: prog(frame, T.finance + 50 + k * 6 + fi * 5, T.finance + 58 + k * 6 + fi * 5) }} />
-                ))
-              ) : (
-                <span style={{ fontFamily: FONT.mono, fontSize: 17, color: C.soft }}>no flag raised</span>
-              )}
-            </div>
+            {P ? (
+              <>
+                {title}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                  {spark}
+                  {figures}
+                  {chips}
+                </div>
+              </>
+            ) : (
+              <>
+                {title}
+                {spark}
+                {figures}
+                {chips}
+              </>
+            )}
           </div>
         )
       })}
@@ -534,11 +591,20 @@ const FinancePanel: React.FC<{ frame: number }> = ({ frame }) => {
 
 // --- Layer 3: the control ---------------------------------------------------
 
-const CHART = { x: 60, y: 150, w: 820, h: 300 }
+const CHART_LANDSCAPE = { x: 60, y: 150, w: 820, h: 300 }
+const CHART_PORTRAIT = { x: 60, y: 150, w: 880, h: 220 }
 
-const ControlCard: React.FC<{ frame: number }> = ({ frame }) => {
+/**
+ * Landscape: chart and total on the left, flags and figures on the right.
+ * Portrait: the same pieces in one column — chart, total, then flags side by
+ * side, figures, review state and the way in to the transactions.
+ */
+const ControlCard: React.FC<{ frame: number; st: Stage }> = ({ frame, st }) => {
   const inP = prog(frame, T.control, T.control + 18)
   if (inP <= 0) return null
+  const P = st.portrait
+  const CHART = P ? CHART_PORTRAIT : CHART_LANDSCAPE
+  const cardH = P ? 1040 : 780
   const dim = prog(frame, T.exception, T.exception + 16) * 0.55
   const draw = prog(frame, T.control + 10, T.control + 50, easeInOut)
   const series = CONTROLS[0].series
@@ -555,10 +621,10 @@ const ControlCard: React.FC<{ frame: number }> = ({ frame }) => {
     <div
       style={{
         position: 'absolute',
-        left: X0,
-        top: TOP,
-        width: W,
-        height: 780,
+        left: st.x0,
+        top: P ? st.top - 5 : st.top,
+        width: st.w,
+        height: cardH,
         background: C.ink,
         border: `1.5px solid ${C.hair}`,
         borderLeft: `6px solid ${C.exception}`,
@@ -572,19 +638,19 @@ const ControlCard: React.FC<{ frame: number }> = ({ frame }) => {
     >
       <div style={{ position: 'absolute', left: 60, top: 40 }}>
         <div style={{ fontFamily: FONT.mono, fontSize: 17, letterSpacing: '0.18em', color: C.soft }}>FINANCE · TOLERANCE</div>
-        <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: 38, color: '#fff', marginTop: 10 }}>
+        <div style={{ fontFamily: FONT.display, fontWeight: 700, fontSize: P ? 31 : 38, color: '#fff', marginTop: 10 }}>
           Payment approved above the approver’s delegated limit
         </div>
       </div>
       {/* Daily run strip — the engine's own thirty runs. */}
-      <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }} width={960} height={780}>
+      <svg style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }} width={960} height={cardH}>
         <defs>
           <linearGradient id="cm-area" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={C.exception} stopOpacity={0.55} />
             <stop offset="1" stopColor={C.exception} stopOpacity={0.04} />
           </linearGradient>
           <clipPath id="cm-draw">
-            <rect x={CHART.x - 10} y={0} width={(CHART.w + 20) * draw} height={780} />
+            <rect x={CHART.x - 10} y={0} width={(CHART.w + 20) * draw} height={cardH} />
           </clipPath>
         </defs>
         {[0, 3].map(v => (
@@ -618,7 +684,7 @@ const ControlCard: React.FC<{ frame: number }> = ({ frame }) => {
         </text>
       </svg>
       {/* 30-day total against the expected band. */}
-      <div style={{ position: 'absolute', left: CHART.x, top: 560, width: CHART.w, opacity: prog(frame, T.control + 22, T.control + 34) }}>
+      <div style={{ position: 'absolute', left: CHART.x, top: P ? 440 : 560, width: CHART.w, opacity: prog(frame, T.control + 22, T.control + 34) }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT.mono, fontSize: 19, letterSpacing: '0.14em', color: C.soft }}>
           <span>30-DAY TOTAL</span>
           <span>EXPECTED ≤ 5</span>
@@ -642,7 +708,8 @@ const ControlCard: React.FC<{ frame: number }> = ({ frame }) => {
         </div>
       </div>
       {/* Right column: the flags, the three figures, the review state. */}
-      <div style={{ position: 'absolute', left: 990, top: 150, width: 630 }}>
+      <div style={P ? { position: 'absolute', left: 60, top: 570, width: 880 } : { position: 'absolute', left: 990, top: 150, width: 630 }}>
+        <div style={P ? { display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 14 } : undefined}>
         {[
           ['ABOVE EXPECTED BAND', '14 found against the 5 this control’s own history leads us to expect in 30 days.'],
           ['REVIEW OVERDUE', '3 awaiting investigation or review; the oldest was raised 13 days ago.'],
@@ -662,11 +729,12 @@ const ControlCard: React.FC<{ frame: number }> = ({ frame }) => {
               }}
             >
               <div style={{ fontFamily: FONT.mono, fontWeight: 600, fontSize: 18, letterSpacing: '0.12em', color: '#fff' }}>{t}</div>
-              <div style={{ fontFamily: FONT.sans, fontSize: 19, color: C.text, marginTop: 8, lineHeight: 1.35 }}>{body}</div>
+              <div style={{ fontFamily: FONT.sans, fontSize: P ? 18 : 19, color: C.text, marginTop: 8, lineHeight: 1.35 }}>{body}</div>
             </div>
           )
         })}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18, marginTop: 20 }}>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18, marginTop: P ? 8 : 20 }}>
           {(
             [
               ['FOUND', 14, 'no human action reduces this', 36],
@@ -727,9 +795,11 @@ const ControlCard: React.FC<{ frame: number }> = ({ frame }) => {
 
 const DRAWER = { x: 520, w: 1280 }
 
-const ExceptionDrawer: React.FC<{ frame: number }> = ({ frame }) => {
+/** Landscape: slides in from the right over the card. Portrait: rises from below, full width. */
+const ExceptionDrawer: React.FC<{ frame: number; st: Stage }> = ({ frame, st }) => {
   const inP = prog(frame, T.exception, T.exception + 20, easeOut)
   if (inP <= 0) return null
+  const P = st.portrait
   const hist = [
     ['RAISED BY A RUN', 'Monitoring engine · 10 Sep 05:30', null],
     ['INVESTIGATION STARTED', 'Aoife Brennan, entity controls auditor · 11 Sep', null],
@@ -745,16 +815,16 @@ const ExceptionDrawer: React.FC<{ frame: number }> = ({ frame }) => {
     <div
       style={{
         position: 'absolute',
-        left: DRAWER.x + (1 - inP) * 700,
-        top: TOP - 10,
-        width: DRAWER.w,
-        height: 730,
+        left: P ? st.x0 : DRAWER.x + (1 - inP) * 700,
+        top: P ? st.top + 10 + (1 - inP) * 900 : st.top - 10,
+        width: P ? st.w : DRAWER.w,
+        height: P ? 860 : 730,
         background: C.ink2,
         border: `1.5px solid ${C.hair}`,
         borderLeft: `6px solid ${C.exceptionRed}`,
         borderRadius: 14,
-        boxShadow: '-40px 0 90px rgba(0,0,0,0.65)',
-        padding: '32px 44px',
+        boxShadow: P ? '0 -40px 90px rgba(0,0,0,0.65)' : '-40px 0 90px rgba(0,0,0,0.65)',
+        padding: P ? '30px 36px' : '32px 44px',
         boxSizing: 'border-box',
         opacity: inP,
       }}
@@ -778,14 +848,14 @@ const ExceptionDrawer: React.FC<{ frame: number }> = ({ frame }) => {
           returned by the reviewer
         </span>
       </div>
-      <div style={{ marginTop: 24, opacity: prog(frame, T.exception + 10, T.exception + 22) }}>
+      <div style={{ marginTop: P ? 32 : 24, opacity: prog(frame, T.exception + 10, T.exception + 22) }}>
         <div style={{ fontFamily: FONT.mono, fontSize: 16, letterSpacing: '0.16em', color: C.soft }}>WHAT THE RUN SAW — RE-PERFORMABLE EVIDENCE</div>
-        <div style={{ fontFamily: FONT.sans, fontSize: 23, color: C.text, marginTop: 8, lineHeight: 1.35 }}>
+        <div style={{ fontFamily: FONT.sans, fontSize: P ? 25 : 23, color: C.text, marginTop: 8, lineHeight: 1.35 }}>
           Approved by a user whose delegated limit on 8 Sep was <b style={{ color: '#fff' }}>£25,000</b>, against a payment of{' '}
           <b style={{ color: '#fff' }}>£58,250</b>.
         </div>
       </div>
-      <div style={{ marginTop: 24, fontFamily: FONT.mono, fontSize: 16, letterSpacing: '0.16em', color: C.soft, opacity: prog(frame, T.exception + 14, T.exception + 24) }}>
+      <div style={{ marginTop: P ? 32 : 24, fontFamily: FONT.mono, fontSize: 16, letterSpacing: '0.16em', color: C.soft, opacity: prog(frame, T.exception + 14, T.exception + 24) }}>
         HISTORY
       </div>
       {hist.map(([k, who, note], i) => {
@@ -802,28 +872,28 @@ const ExceptionDrawer: React.FC<{ frame: number }> = ({ frame }) => {
               transform: `translateY(${(1 - p) * 10}px)`,
             }}
           >
-            <div style={{ fontFamily: FONT.mono, fontSize: 18, color: C.text }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: P ? 19 : 18, color: C.text }}>
               <span style={{ color: red ? C.exceptionRed : '#fff', fontWeight: 600, letterSpacing: '0.06em' }}>{k}</span>
               <span style={{ color: C.soft }}> · {who}</span>
             </div>
-            {note && <div style={{ fontFamily: FONT.sans, fontSize: 19, color: C.text, marginTop: 4 }}>{note}</div>}
+            {note && <div style={{ fontFamily: FONT.sans, fontSize: P ? 21 : 19, color: C.text, marginTop: 4 }}>{note}</div>}
           </div>
         )
       })}
-      <div style={{ marginTop: 26, fontFamily: FONT.mono, fontSize: 16, letterSpacing: '0.16em', color: C.soft, opacity: prog(frame, T.exception + 46, T.exception + 56) }}>
+      <div style={{ marginTop: P ? 34 : 26, fontFamily: FONT.mono, fontSize: 16, letterSpacing: '0.16em', color: C.soft, opacity: prog(frame, T.exception + 46, T.exception + 56) }}>
         YOUR RATIONALE — THE COMMENT A REVIEWER READS
       </div>
       <div
         style={{
           marginTop: 10,
-          height: 170,
+          height: P ? 210 : 170,
           background: C.bg,
           border: `1.5px solid ${typing || drafted > 0 ? C.assureBright : C.hair}`,
           borderRadius: 8,
           padding: '16px 20px',
           boxSizing: 'border-box',
           fontFamily: FONT.sans,
-          fontSize: 21,
+          fontSize: P ? 24 : 21,
           lineHeight: 1.45,
           color: chars > 0 ? '#fff' : C.soft,
           opacity: prog(frame, T.exception + 48, T.exception + 58),
@@ -833,7 +903,7 @@ const ExceptionDrawer: React.FC<{ frame: number }> = ({ frame }) => {
         {chars > 0 ? DRAFT.slice(0, chars) : 'What you looked at, what you concluded, and why.'}
         {caretOn && <span style={{ display: 'inline-block', width: 3, height: 24, background: C.assureBright, marginLeft: 2, verticalAlign: -4 }} />}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: 18, opacity: prog(frame, T.exception + 52, T.exception + 62) }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 22, marginTop: P ? 24 : 18, opacity: prog(frame, T.exception + 52, T.exception + 62) }}>
         <div
           style={{
             position: 'relative',
@@ -850,7 +920,7 @@ const ExceptionDrawer: React.FC<{ frame: number }> = ({ frame }) => {
         >
           {frame >= T.draft && frame < T.typeTo ? 'Drafting…' : 'Draft with AI'}
         </div>
-        <div style={{ fontFamily: FONT.sans, fontSize: 18, color: C.soft, lineHeight: 1.35 }}>
+        <div style={{ fontFamily: FONT.sans, fontSize: P ? 19 : 18, color: C.soft, lineHeight: 1.35 }}>
           {drafted > 0 ? (
             <span style={{ color: C.text, opacity: drafted }}>
               Written by AI from this exception’s own facts. The evidence reference, owner and date stay with the auditor.
@@ -866,8 +936,36 @@ const ExceptionDrawer: React.FC<{ frame: number }> = ({ frame }) => {
 
 // ---------------------------------------------------------------------------
 
+// Where the cursor goes: the Finance tile, the first control, the way in to its
+// transactions, then "Draft with AI" — measured off rendered stills of each shape.
+const CURSOR_LANDSCAPE = [
+  { f: 72, x: 1300, y: 980 },
+  { f: T.toFinance - 6, x: tileX(0) + 230, y: TILE_Y + 60 },
+  { f: T.finance + 60, x: tileX(0) + 230, y: TILE_Y + 60 },
+  { f: T.toControl - 6, x: 620, y: 536 },
+  { f: T.control + 60, x: 620, y: 536 },
+  { f: T.toException - 6, x: 1500, y: 928 },
+  { f: T.exception + 50, x: 1500, y: 928 },
+  { f: T.draft - 6, x: 676, y: 876 },
+  { f: T.draft + 30, x: 676, y: 876 },
+]
+const CURSOR_PORTRAIT = [
+  { f: 72, x: 900, y: 1250 },
+  { f: T.toFinance - 6, x: 260, y: 300 },
+  { f: T.finance + 60, x: 260, y: 300 },
+  { f: T.toControl - 6, x: 330, y: 600 },
+  { f: T.control + 60, x: 330, y: 600 },
+  { f: T.toException - 6, x: 400, y: 1218 },
+  { f: T.exception + 50, x: 400, y: 1218 },
+  { f: T.draft - 6, x: 190, y: 1019 },
+  { f: T.draft + 30, x: 190, y: 1019 },
+]
+
 export const Monitoring: React.FC = () => {
   const frame = useCurrentFrame()
+  const { width, height } = useVideoConfig()
+  const st = height > width ? STAGE_PORTRAIT : STAGE_LANDSCAPE
+  const P = st.portrait
   const fade = useSceneFade(12, 14)
   // A slow push across the whole scene, so nothing is ever quite still.
   const push = interpolate(frame, [0, 480], [1, 1.035], clamp)
@@ -879,27 +977,13 @@ export const Monitoring: React.FC = () => {
         }}
       />
       <AbsoluteFill style={{ transform: `scale(${push})`, transformOrigin: '50% 60%' }}>
-        <Tiles frame={frame} />
-        <FinancePanel frame={frame} />
-        <ControlCard frame={frame} />
-        <ExceptionDrawer frame={frame} />
-        <Cursor
-          frame={frame}
-          path={[
-            { f: 72, x: 1300, y: 980 },
-            { f: T.toFinance - 6, x: tileX(0) + 230, y: TILE_Y + 60 },
-            { f: T.finance + 60, x: tileX(0) + 230, y: TILE_Y + 60 },
-            { f: T.toControl - 6, x: 620, y: 536 },
-            { f: T.control + 60, x: 620, y: 536 },
-            { f: T.toException - 6, x: 1500, y: 928 },
-            { f: T.exception + 50, x: 1500, y: 928 },
-            { f: T.draft - 6, x: 676, y: 876 },
-            { f: T.draft + 30, x: 676, y: 876 },
-          ]}
-          clicks={[T.toFinance, T.toControl, T.toException, T.draft]}
-        />
+        <Tiles frame={frame} st={st} />
+        <FinancePanel frame={frame} st={st} />
+        <ControlCard frame={frame} st={st} />
+        <ExceptionDrawer frame={frame} st={st} />
+        <Cursor frame={frame} path={P ? CURSOR_PORTRAIT : CURSOR_LANDSCAPE} clicks={[T.toFinance, T.toControl, T.toException, T.draft]} />
       </AbsoluteFill>
-      <Header frame={frame} />
+      <Header frame={frame} st={st} />
     </AbsoluteFill>
   )
 }

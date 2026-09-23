@@ -1,4 +1,4 @@
-import { AbsoluteFill, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { Lockup, prog, useSceneFade, easeInOut } from '../components/kit'
 import { C, FONT } from '../theme'
 
@@ -11,6 +11,8 @@ import { C, FONT } from '../theme'
  */
 export const Open: React.FC = () => {
   const frame = useCurrentFrame()
+  const { width, height } = useVideoConfig()
+  const portrait = height > width
   const fade = useSceneFade(1, 14)
   const lift = prog(frame, 70, 100, easeInOut)
   return (
@@ -29,14 +31,14 @@ export const Open: React.FC = () => {
           transform: `translateY(${-lift * 120}px) scale(${1 - lift * 0.18})`,
         }}
       >
-        <Lockup scale={1.35} start={6} />
+        <Lockup scale={portrait ? 0.92 : 1.35} start={6} trackFrom={portrait ? 0.26 : 0.55} />
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 260 }}>
         <div
           style={{
             fontFamily: FONT.display,
             fontWeight: 700,
-            fontSize: 74,
+            fontSize: portrait ? 68 : 74,
             letterSpacing: '-0.02em',
             color: '#fff',
             opacity: prog(frame, 86, 104),
@@ -49,7 +51,7 @@ export const Open: React.FC = () => {
           style={{
             marginTop: 20,
             fontFamily: FONT.mono,
-            fontSize: 22,
+            fontSize: portrait ? 18 : 22,
             letterSpacing: '0.22em',
             color: C.soft,
             textTransform: 'uppercase',

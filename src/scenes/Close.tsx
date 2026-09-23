@@ -1,4 +1,4 @@
-import { AbsoluteFill, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, useCurrentFrame, useVideoConfig } from 'remotion'
 import { Lockup, PulseDot, easeInOut, prog, useSceneFade } from '../components/kit'
 import { C, CTA, FONT } from '../theme'
 
@@ -11,6 +11,9 @@ const TOOLS = ['Process mining', 'Board papers', 'Continuous monitoring']
 
 export const Close: React.FC = () => {
   const frame = useCurrentFrame()
+  const { width, height } = useVideoConfig()
+  // Portrait: the three names stack, since one line of them is wider than the frame.
+  const portrait = height > width
   const fade = useSceneFade(12, 1)
   const toolsOut = prog(frame, 58, 72, easeInOut)
   return (
@@ -23,11 +26,18 @@ export const Close: React.FC = () => {
       />
       {/* The three, in one line, then they make way for the mark. */}
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', opacity: 1 - toolsOut }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 34 }}>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: portrait ? 'column' : 'row',
+            alignItems: 'center',
+            gap: portrait ? 18 : 34,
+          }}
+        >
           {TOOLS.map((t, i) => {
             const p = prog(frame, 4 + i * 9, 20 + i * 9)
             return (
-              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 34 }}>
+              <div key={t} style={{ display: 'flex', flexDirection: portrait ? 'column' : 'row', alignItems: 'center', gap: portrait ? 18 : 34 }}>
                 {i > 0 && <span style={{ width: 10, height: 10, borderRadius: '50%', background: C.assure, opacity: p }} />}
                 <span
                   style={{
@@ -49,7 +59,7 @@ export const Close: React.FC = () => {
         </div>
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingBottom: 170 }}>
-        {frame >= 64 && <Lockup scale={1.05} start={64} />}
+        {frame >= 64 && <Lockup scale={portrait ? 0.9 : 1.05} start={64} trackFrom={portrait ? 0.26 : 0.55} />}
       </AbsoluteFill>
       <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 190 }}>
         <div
@@ -80,7 +90,7 @@ export const Close: React.FC = () => {
             alignItems: 'center',
             gap: 16,
             fontFamily: FONT.mono,
-            fontSize: 30,
+            fontSize: portrait ? 27 : 30,
             letterSpacing: '0.04em',
             color: C.text,
             opacity: prog(frame, 108, 124),
