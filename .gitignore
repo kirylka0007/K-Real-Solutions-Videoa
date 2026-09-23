@@ -3,3 +3,6 @@ node_modules/
 out/
 .DS_Store
 *.log
+
+# Licensed music (Epidemic Sound): used in renders, not redistributed.
+public/audio/

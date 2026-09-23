@@ -1,6 +1,6 @@
 import { Composition } from 'remotion'
 import { Film } from './Film'
-import { FPS, TOTAL } from './theme'
+import { FPS, TOTAL, type MusicId } from './theme'
 
 /**
  * One film, two shapes: 16:9 for YouTube and the website, 4:5 for the LinkedIn
@@ -10,7 +10,7 @@ import { FPS, TOTAL } from './theme'
  */
 export const Root: React.FC = () => (
   <>
-    <Composition id="Film-16x9" component={Film} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} />
-    <Composition id="Film-4x5" component={Film} durationInFrames={TOTAL} fps={FPS} width={1080} height={1350} />
+    <Composition id="Film-16x9" component={Film} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} defaultProps={{ music: 'professional' as MusicId }} />
+    <Composition id="Film-4x5" component={Film} durationInFrames={TOTAL} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'professional' as MusicId }} />
   </>
 )

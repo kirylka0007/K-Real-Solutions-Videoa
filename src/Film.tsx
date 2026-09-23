@@ -1,4 +1,4 @@
-import { AbsoluteFill, Sequence, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame } from 'remotion'
 import { Fonts } from './fonts'
 import { Atmosphere, prog } from './components/kit'
 import { Open } from './scenes/Open'
@@ -6,7 +6,7 @@ import { Mining } from './scenes/Mining'
 import { Papers } from './scenes/Papers'
 import { Monitoring } from './scenes/Monitoring'
 import { Close } from './scenes/Close'
-import { C, FONT, SCENES } from './theme'
+import { C, FONT, FPS, MUSIC, SCENES, TOTAL, type MusicId } from './theme'
 
 /**
  * The film, assembled.
@@ -15,9 +15,10 @@ import { C, FONT, SCENES } from './theme'
  * lengthening one moves everything after it without a second edit. Each scene
  * fades itself in and out, so every cut passes through black.
  */
-export const Film: React.FC = () => (
+export const Film: React.FC<{ music: MusicId }> = ({ music }) => (
   <AbsoluteFill style={{ background: C.bg }}>
     <Fonts />
+    {music !== 'none' && <Soundtrack id={music} />}
     <Sequence from={SCENES.open.from} durationInFrames={SCENES.open.duration}>
       <Open />
     </Sequence>
@@ -64,5 +65,27 @@ const DemoLabel: React.FC = () => {
     >
       Demonstration data · invented organisations
     </div>
+  )
+}
+
+/**
+ * The music: trimmed so the drop meets the cut to process mining, a short fade
+ * in, and a fade out that finishes with the film as "Request access" holds.
+ */
+const Soundtrack: React.FC<{ id: Exclude<MusicId, 'none'> }> = ({ id }) => {
+  const track = MUSIC[id]
+  const trimBefore = Math.round((track.dropAt - SCENES.mining.from / FPS) * FPS)
+  return (
+    <Audio
+      src={staticFile(track.file)}
+      trimBefore={trimBefore}
+      volume={f =>
+        track.volume *
+        interpolate(f, [0, 12, TOTAL - 75, TOTAL - 1], [0, 1, 1, 0], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+        })
+      }
+    />
   )
 }

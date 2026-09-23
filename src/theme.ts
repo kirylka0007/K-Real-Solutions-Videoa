@@ -59,3 +59,22 @@ export const CTA = {
   label: 'Request access',
   url: 'krealsolutions.co.uk/innovation-lab',
 } as const
+
+/**
+ * The soundtrack. Each track starts part-way in so that its quiet intro sits
+ * under the brand and its drop lands on the first product frame (the cut to
+ * process mining at 5.0s). Drop times were measured from the audio itself.
+ *
+ * `volume` evens the two out: measured over the part of the track the film
+ * uses, Professional's body is about -9 dBFS RMS and Happy Tree's about -19.5,
+ * so they are brought to roughly -16 and -18 with headroom left on the peaks.
+ *
+ * The files are Epidemic Sound tracks licensed to K Real Solutions; they are
+ * git-ignored under public/audio/ and must be placed there to render.
+ */
+export const MUSIC = {
+  professional: { file: 'audio/professional.mp3', dropAt: 10.3, volume: 0.45 },
+  'happy-tree': { file: 'audio/happy-tree.mp3', dropAt: 15.95, volume: 1.15 },
+} as const
+
+export type MusicId = keyof typeof MUSIC | 'none'
