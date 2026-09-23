@@ -1,5 +1,7 @@
 import { Composition } from 'remotion'
 import { Film } from './Film'
+import { Cover } from './Cover'
+import { SCENES } from './theme'
 import { FPS, TOTAL, type MusicId } from './theme'
 
 /**
@@ -12,5 +14,7 @@ export const Root: React.FC = () => (
   <>
     <Composition id="Film-16x9" component={Film} durationInFrames={TOTAL} fps={FPS} width={1920} height={1080} defaultProps={{ music: 'professional' as MusicId }} />
     <Composition id="Film-4x5" component={Film} durationInFrames={TOTAL} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'professional' as MusicId }} />
+    {/* The LinkedIn cover: render with `remotion still Cover-4x5 --frame=520`. */}
+    <Composition id="Cover-4x5" component={Cover} durationInFrames={SCENES.mining.duration} fps={FPS} width={1080} height={1350} />
   </>
 )
