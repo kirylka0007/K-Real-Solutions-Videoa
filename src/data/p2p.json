@@ -1,0 +1,248 @@
+{
+ "kpis": {
+  "transactions": 398,
+  "events": 2671,
+  "value": 8176201.199999997,
+  "atRisk": 98,
+  "valueAtRisk": 2157821.8899999997,
+  "variants": 15,
+  "tests": 9
+ },
+ "happyPath": [
+  "Purchase Requisition Created",
+  "Purchase Order Created",
+  "Purchase Order Approved",
+  "Goods Receipt Posted",
+  "Supplier Invoice Recorded",
+  "Invoice Approved",
+  "Payment Released"
+ ],
+ "nodes": [
+  {
+   "id": "Purchase Order Approved",
+   "label": "Purchase Order Approved",
+   "depth": 2,
+   "freq": 451,
+   "wait": 2.14
+  },
+  {
+   "id": "Purchase Order Created",
+   "label": "Purchase Order Created",
+   "depth": 1,
+   "freq": 398,
+   "wait": 3.1
+  },
+  {
+   "id": "Payment Released",
+   "label": "Payment Released",
+   "depth": 9,
+   "freq": 388,
+   "wait": 12.5
+  },
+  {
+   "id": "Supplier Invoice Recorded",
+   "label": "Supplier Invoice Recorded",
+   "depth": 5,
+   "freq": 384,
+   "wait": 4.63
+  },
+  {
+   "id": "Invoice Approved",
+   "label": "Invoice Approved",
+   "depth": 7,
+   "freq": 373,
+   "wait": 10.1
+  },
+  {
+   "id": "Goods Receipt Posted",
+   "label": "Goods Receipt Posted",
+   "depth": 4,
+   "freq": 342,
+   "wait": 10.1
+  },
+  {
+   "id": "Purchase Requisition Created",
+   "label": "Purchase Requisition Created",
+   "depth": 0,
+   "freq": 246,
+   "wait": 0
+  },
+  {
+   "id": "Purchase Order Changed",
+   "label": "Purchase Order Changed",
+   "depth": 3,
+   "freq": 72,
+   "wait": 5.56
+  },
+  {
+   "id": "Vendor Bank Details Changed",
+   "label": "Vendor Bank Details Changed",
+   "depth": 8,
+   "freq": 9,
+   "wait": 1.75
+  },
+  {
+   "id": "Payment Block Removed",
+   "label": "Payment Block Removed",
+   "depth": 6,
+   "freq": 8,
+   "wait": 4.65
+  }
+ ],
+ "edges": [
+  {
+   "from": "Purchase Order Created",
+   "to": "Purchase Order Approved",
+   "freq": 379,
+   "back": false
+  },
+  {
+   "from": "Invoice Approved",
+   "to": "Payment Released",
+   "freq": 366,
+   "back": false
+  },
+  {
+   "from": "Supplier Invoice Recorded",
+   "to": "Invoice Approved",
+   "freq": 340,
+   "back": false
+  },
+  {
+   "from": "Purchase Order Approved",
+   "to": "Goods Receipt Posted",
+   "freq": 331,
+   "back": false
+  },
+  {
+   "from": "Goods Receipt Posted",
+   "to": "Supplier Invoice Recorded",
+   "freq": 318,
+   "back": false
+  },
+  {
+   "from": "Purchase Requisition Created",
+   "to": "Purchase Order Created",
+   "freq": 246,
+   "back": false
+  },
+  {
+   "from": "Purchase Order Approved",
+   "to": "Purchase Order Changed",
+   "freq": 72,
+   "back": false
+  },
+  {
+   "from": "Purchase Order Changed",
+   "to": "Purchase Order Approved",
+   "freq": 72,
+   "back": true
+  },
+  {
+   "from": "Purchase Order Approved",
+   "to": "Supplier Invoice Recorded",
+   "freq": 42,
+   "back": false
+  },
+  {
+   "from": "Goods Receipt Posted",
+   "to": "Invoice Approved",
+   "freq": 24,
+   "back": false
+  },
+  {
+   "from": "Supplier Invoice Recorded",
+   "to": "Purchase Order Created",
+   "freq": 24,
+   "back": true
+  },
+  {
+   "from": "Supplier Invoice Recorded",
+   "to": "Payment Released",
+   "freq": 12,
+   "back": false
+  },
+  {
+   "from": "Purchase Order Created",
+   "to": "Goods Receipt Posted",
+   "freq": 11,
+   "back": false
+  },
+  {
+   "from": "Payment Block Removed",
+   "to": "Invoice Approved",
+   "freq": 8,
+   "back": false
+  },
+  {
+   "from": "Supplier Invoice Recorded",
+   "to": "Payment Block Removed",
+   "freq": 8,
+   "back": false
+  },
+  {
+   "from": "Invoice Approved",
+   "to": "Vendor Bank Details Changed",
+   "freq": 6,
+   "back": false
+  },
+  {
+   "from": "Vendor Bank Details Changed",
+   "to": "Payment Released",
+   "freq": 6,
+   "back": false
+  },
+  {
+   "from": "Payment Released",
+   "to": "Payment Released",
+   "freq": 4,
+   "back": true
+  },
+  {
+   "from": "Payment Released",
+   "to": "Vendor Bank Details Changed",
+   "freq": 3,
+   "back": true
+  },
+  {
+   "from": "Payment Released",
+   "to": "Invoice Approved",
+   "freq": 1,
+   "back": true
+  }
+ ],
+ "findings": [
+  {
+   "id": "ctrl-dormant-vendor-reactivation",
+   "title": "Payment block overridden",
+   "severity": "critical",
+   "condition": "8 of 8 transactions tested failed this control (100.0%), carrying £190,134.",
+   "valueAtRisk": 190134.46999999997,
+   "affectedCases": 8
+  },
+  {
+   "id": "ctrl-unapproved-vendor-change",
+   "title": "Vendor change followed by payment",
+   "severity": "critical",
+   "condition": "6 of 9 transactions tested failed this control (66.7%), carrying £56,943.",
+   "valueAtRisk": 56943.329999999994,
+   "affectedCases": 6
+  },
+  {
+   "id": "multi-failure",
+   "title": "Transactions failing more than one control",
+   "severity": "high",
+   "condition": "31 transactions failed two or more control tests. Across the population 98 transactions failed at least one, carrying £2,157,822.",
+   "valueAtRisk": 2157821.8899999997,
+   "affectedCases": 31
+  },
+  {
+   "id": "ctrl-three-way-match",
+   "title": "Three-way match",
+   "severity": "high",
+   "condition": "42 of 384 transactions tested failed this control (10.9%), carrying £994,740.",
+   "valueAtRisk": 994740.2399999999,
+   "affectedCases": 42
+  }
+ ]
+}

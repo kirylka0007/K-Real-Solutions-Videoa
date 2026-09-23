@@ -1,37 +1,61 @@
 /**
- * The products' own palette, so the film and the software cannot drift apart.
+ * The brand, taken from krealsolutions.co.uk's own globals.css so the film and
+ * the website cannot drift apart.
  *
- * Taken from `globals.css` in the hub apps. `critical` is the text-safe
- * variant rather than the mark hue — on screen at this size it is large text,
- * but it is also the colour a viewer reads a number in, and the lifted tone is
- * what the products themselves now use for exactly that.
+ * `bg` is darker than the site's `--ink` on purpose: the brief is a film that is
+ * mostly black, and the site's ink (#0C232B) is a deep teal that reads as
+ * colour at full-screen. The ink tones are kept for panels, so a product screen
+ * still sits on its own ground.
  */
 export const C = {
-  ink: '#0a2a26',
-  panel: '#0d3531',
-  line: 'rgba(157, 189, 182, 0.13)',
-  accent: '#19c8a6',
-  accentText: '#1bd8b4',
-  critical: '#ee8588',
-  text: '#e8f4f1',
-  soft: '#9dbdb6',
-  muted: '#7f9c96',
+  bg: '#04080A',
+  ink: '#0C232B',
+  ink2: '#123039',
+  ink3: '#15373F',
+  assure: '#12A594',
+  assureBright: '#19C9B4',
+  assureDeep: '#0E7E72',
+  exception: '#E8A317',
+  exceptionRed: '#D8552E',
+  text: '#DDE6E5',
+  soft: '#93A6A9',
+  hair: 'rgba(221,230,229,0.16)',
+  // The board-paper portal is a cream document; on a black stage it reads as
+  // exactly that — the paper the committee is handed.
+  paper: '#F6F3EC',
+  paperText: '#1B1A17',
+  paperSoft: '#6B665C',
+  paperRule: '#CFC8B8',
+  paperRed: '#9C2B1C',
+  paperAmber: '#B8690E',
+  paperGreen: '#2E8B62',
+  paperBlue: '#5B7AA6',
+} as const
+
+export const FONT = {
+  display: 'Archivo, sans-serif',
+  sans: '"IBM Plex Sans", sans-serif',
+  mono: '"IBM Plex Mono", monospace',
 } as const
 
 export const FPS = 30
 
 /**
- * The film, in frames, at 30fps. Sixty seconds is the hard ceiling the owner
- * set; the voiceover runs about 107 words, roughly 43 seconds of speech, and
- * the remainder is deliberate silence so each visual lands before the next
- * sentence starts.
+ * Sixty seconds is the ceiling. Each scene owns a fade in and a fade out of its
+ * own, so scenes butt against one another and the cut is always through black.
  */
 export const SCENES = {
-  sampling: { from: 0, duration: 540 },     // 0–18s  the argument
-  mining: { from: 540, duration: 360 },     // 18–30s
-  papers: { from: 900, duration: 360 },     // 30–42s
-  monitoring: { from: 1260, duration: 360 },// 42–54s
-  close: { from: 1620, duration: 180 },     // 54–60s
+  open: { from: 0, duration: 150 }, //        0–5s    the brand
+  mining: { from: 150, duration: 540 }, //    5–23s   process mining + AI
+  papers: { from: 690, duration: 450 }, //    23–38s  board paper, transformed
+  monitoring: { from: 1140, duration: 480 }, // 38–54s continuous monitoring
+  close: { from: 1620, duration: 180 }, //    54–60s  request access
 } as const
 
 export const TOTAL = 1800
+
+/** The call to action, exactly as the site words it. */
+export const CTA = {
+  label: 'Request access',
+  url: 'krealsolutions.co.uk/innovation-lab',
+} as const

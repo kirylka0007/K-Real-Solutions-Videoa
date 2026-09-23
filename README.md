@@ -37,14 +37,27 @@ rather than downloading a second browser. Override with
 - `src/theme.ts` — the palette, taken from the products' own `globals.css`, and
   the film's timeline in frames. Changing a scene's length here moves
   everything downstream of it.
-- `src/lib/figures.ts` — the demonstration population and the sampling
-  arithmetic the opening is built from. Seeded, so every render is identical.
-- `src/scenes/` — one file per scene.
+- `src/fonts.tsx` — Archivo and IBM Plex, loaded from `public/fonts`, because the
+  render browser here has no internet and a web-font request would silently
+  fall back.
+- `src/data/p2p.json` — the process mining engine's output for its
+  Procure-to-Pay demo population: map, KPIs, findings.
+- `src/scenes/` — one file per scene: `Open` (brand), `Mining` (process map and
+  AI findings), `Papers` (risk register transformed into the orbital chart),
+  `Monitoring` (entities → Finance → one control → one exception, with the AI
+  draft), `Close` (request access).
+- `reference/` — captures of the live products that the native scenes were
+  measured from. Not used in the render.
 
 ## On the figures
 
-The numbers in the film are computed by the process mining hub over its own
-demonstration extract: an invented firm, real arithmetic. They are never a
-client's data, and the film says so on screen. The opening sample is
-constructed to contain exactly the number of failures the arithmetic expects it
-to find — not a flattering draw.
+Every figure is the products' own output over their demonstration populations:
+invented organisations, real arithmetic. Process mining figures come from its
+P2P demo extract; board papers from the portal's Appendix B rows; continuous
+monitoring from `computeHub` over its demo data, 30-day window to 22 Sep 2026.
+They are never a client's data, and a corner label says so on screen for as
+long as a product is shown.
+
+The AI rationale typed in the monitoring scene is written to the scope of the
+product's "Draft with AI" (the exception's own facts only), not captured from a
+live model call.
