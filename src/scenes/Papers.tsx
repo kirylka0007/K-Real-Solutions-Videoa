@@ -249,9 +249,11 @@ export const Papers: React.FC = () => {
 
           {/* Each risk: starts as its row's reference, flies to its orbit. */}
           {RISKS.map((r, i) => {
-            // Centred in its row: below the header, text baseline just under the
-            // middle. Each row and the header carry a 1px bottom border.
-            const from = { x: 56 + 30, y: TABLE_TOP + 39 + (ROW_H + 1) * i + ROW_H / 2 + 6 }
+            // Centred in its row. Offset and pitch are measured off rendered
+            // stills (both shapes): rows repeat every ROW_H, and the first row's
+            // centre sits 32px + ROW_H/2 below the table top; +6 puts the caps'
+            // middle, not their baseline, on that centre.
+            const from = { x: 56 + 30, y: TABLE_TOP + 32 + ROW_H * i + ROW_H / 2 + 6 }
             const to = pos(r)
             const delay = T_FLY + i * 5
             const s = spring({ frame: frame - delay, fps, config: { damping: 15, mass: 0.8 } })
