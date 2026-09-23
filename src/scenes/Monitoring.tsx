@@ -242,11 +242,11 @@ const Cursor: React.FC<{ frame: number; path: Array<{ f: number; x: number; y: n
 
 /** Mono eyebrow, then a headline that swaps word-by-word as the camera goes deeper. */
 const HEADLINES: Array<{ at: number; text: string }> = [
-  { at: 0, text: 'Every control. Every day.' },
-  { at: T.finance + 4, text: 'Into any entity.' },
-  { at: T.control + 4, text: 'Into any control.' },
-  { at: T.exception + 4, text: 'Into the transaction itself.' },
-  { at: T.draft - 6, text: 'AI drafts. The auditor decides.' },
+  { at: 0, text: 'Every control. Every day' },
+  { at: T.finance + 4, text: 'Into any entity' },
+  { at: T.control + 4, text: 'Into any control' },
+  { at: T.exception + 4, text: 'Into the transaction itself' },
+  { at: T.draft - 6, text: 'AI drafts. The auditor decides' },
 ]
 
 const Header: React.FC<{ frame: number; st: Stage }> = ({ frame, st }) => {

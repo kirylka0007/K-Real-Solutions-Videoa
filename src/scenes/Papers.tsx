@@ -138,7 +138,7 @@ export const Papers: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: C.bg, opacity: fade, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', left: L.kicker.left, right: L.kicker.left, top: L.kicker.top, opacity: 1 - prog(frame, T_FLY + 40, T_FLY + 60) }}>
-        <Kicker eyebrow="Board papers" headline="Forty pages. One question nobody can answer." start={4} size={L.kicker.size} />
+        <Kicker eyebrow="Board papers" headline="Forty pages. One question nobody can answer" start={4} size={L.kicker.size} />
       </div>
       <div
         style={{
@@ -150,7 +150,7 @@ export const Papers: React.FC = () => {
           transform: `translateY(${(1 - prog(frame, T_FLY + 64, T_FLY + 90)) * 20}px)`,
         }}
       >
-        <Kicker eyebrow="Board papers" headline="Which risk is closest to us? Now you can see it." start={T_FLY + 62} size={L.kicker.size} />
+        <Kicker eyebrow="Board papers" headline="Which risk is closest to us? Now you can see it" start={T_FLY + 62} size={L.kicker.size} />
       </div>
 
       {/* The paper itself, on a dark stage. */}

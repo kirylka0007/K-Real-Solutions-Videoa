@@ -155,7 +155,7 @@ export const Mining: React.FC = () => {
           transform: `translateY(${-prog(frame, 150, 176) * 30}px)`,
         }}
       >
-        <Kicker eyebrow="Process mining" headline="Every transaction. Not a sample." start={4} size={portrait ? 70 : 76} />
+        <Kicker eyebrow="Process mining" headline="Every transaction. Not a sample" start={4} size={portrait ? 70 : 76} />
       </div>
 
       {/* B: the figures, straight off the engine. */}
@@ -520,7 +520,7 @@ const FindingsPanel: React.FC<{ frame: number; portrait: boolean }> = ({ frame, 
         }}
       >
         Found on the whole population.
-        <span style={{ display: 'block', color: C.assureBright }}>Not on a sample of 25.</span>
+        <span style={{ display: 'block', color: C.assureBright }}>Not on a sample of 25</span>
       </div>
     </div>
   )
