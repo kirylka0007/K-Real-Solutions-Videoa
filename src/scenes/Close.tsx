@@ -10,7 +10,7 @@ import { C, CTA, FONT } from '../theme'
 const TOOLS = ['Process mining', 'Board papers', 'Continuous monitoring']
 
 /** What K Real Solutions does, in one line: the service behind the three demos. */
-const SERVICE_LINE = 'We build practical analytics and AI solutions for internal audit and compliance teams.'
+const SERVICE_LINE = 'We build practical analytics and AI solutions for internal audit and compliance teams'
 
 export const Close: React.FC = () => {
   const frame = useCurrentFrame()
