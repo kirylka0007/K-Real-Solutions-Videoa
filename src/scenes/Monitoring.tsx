@@ -264,7 +264,6 @@ const Header: React.FC<{ frame: number }> = ({ frame }) => {
           color: C.assureBright,
         }}
       >
-        <span style={{ width: 46 * prog(frame, 0, 20), height: 2, background: C.assureBright }} />
         {crumbs.map((c, i) => {
           const p = prog(frame, c.at, c.at + 12)
           return p > 0 ? (

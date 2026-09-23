@@ -163,14 +163,6 @@ export const Kicker: React.FC<{
           justifyContent: align === 'center' ? 'center' : 'flex-start',
         }}
       >
-        <span
-          style={{
-            display: 'inline-block',
-            width: 46 * prog(frame, start, start + 20),
-            height: 2,
-            background: accent,
-          }}
-        />
         {eyebrow}
       </div>
       <div
