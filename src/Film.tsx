@@ -1,4 +1,5 @@
-import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame } from 'remotion'
+import { AbsoluteFill, Audio, Freeze, Sequence, interpolate, staticFile, useCurrentFrame } from 'remotion'
+import { COVER_FRAME, Cover } from './Cover'
 import { Fonts } from './fonts'
 import { Atmosphere, prog } from './components/kit'
 import { Open } from './scenes/Open'
@@ -15,29 +16,53 @@ import { C, FONT, FPS, MUSIC, SCENES, TOTAL, type MusicId } from './theme'
  * lengthening one moves everything after it without a second edit. Each scene
  * fades itself in and out, so every cut passes through black.
  */
-export const Film: React.FC<{ music: MusicId }> = ({ music }) => (
+export const Film: React.FC<{ music: MusicId; coverLead?: number }> = ({ music, coverLead = 0 }) => (
   <AbsoluteFill style={{ background: C.bg }}>
     <Fonts />
-    {music !== 'none' && <Soundtrack id={music} />}
-    <Sequence from={SCENES.open.from} durationInFrames={SCENES.open.duration}>
-      <Open />
+    {/*
+      The phone cut opens on the cover for a moment: LinkedIn's app takes the
+      opening frame as the thumbnail and offers no way to choose another, and
+      the film itself opens on black.
+    */}
+    {coverLead > 0 && (
+      <Sequence durationInFrames={coverLead}>
+        <CoverLead frames={coverLead} />
+      </Sequence>
+    )}
+    <Sequence from={coverLead}>
+      {music !== 'none' && <Soundtrack id={music} />}
+      <Sequence from={SCENES.open.from} durationInFrames={SCENES.open.duration}>
+        <Open />
+      </Sequence>
+      <Sequence from={SCENES.mining.from} durationInFrames={SCENES.mining.duration}>
+        <Mining />
+      </Sequence>
+      <Sequence from={SCENES.papers.from} durationInFrames={SCENES.papers.duration}>
+        <Papers />
+      </Sequence>
+      <Sequence from={SCENES.monitoring.from} durationInFrames={SCENES.monitoring.duration}>
+        <Monitoring />
+      </Sequence>
+      <Sequence from={SCENES.close.from} durationInFrames={SCENES.close.duration}>
+        <Close />
+      </Sequence>
+      <Atmosphere />
+      <DemoLabel />
     </Sequence>
-    <Sequence from={SCENES.mining.from} durationInFrames={SCENES.mining.duration}>
-      <Mining />
-    </Sequence>
-    <Sequence from={SCENES.papers.from} durationInFrames={SCENES.papers.duration}>
-      <Papers />
-    </Sequence>
-    <Sequence from={SCENES.monitoring.from} durationInFrames={SCENES.monitoring.duration}>
-      <Monitoring />
-    </Sequence>
-    <Sequence from={SCENES.close.from} durationInFrames={SCENES.close.duration}>
-      <Close />
-    </Sequence>
-    <Atmosphere />
-    <DemoLabel />
   </AbsoluteFill>
 )
+
+/** The cover, held still, dissolving to black in its last few frames. */
+const CoverLead: React.FC<{ frames: number }> = ({ frames }) => {
+  const frame = useCurrentFrame()
+  return (
+    <AbsoluteFill style={{ opacity: 1 - prog(frame, frames - 8, frames) }}>
+      <Freeze frame={COVER_FRAME}>
+        <Cover />
+      </Freeze>
+    </AbsoluteFill>
+  )
+}
 
 /**
  * Every figure on screen is the products' own arithmetic over invented demo

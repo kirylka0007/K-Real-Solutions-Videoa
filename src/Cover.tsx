@@ -15,7 +15,7 @@ export const COVER_FRAME = 520
 export const Cover: React.FC = () => (
   <AbsoluteFill style={{ background: C.bg }}>
     <Fonts />
-    <Mining />
+    <Mining hold />
     <Atmosphere />
     <div
       style={{

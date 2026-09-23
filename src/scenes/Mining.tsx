@@ -113,12 +113,18 @@ const PANEL_AT = 300
 const money = (n: number) =>
   n >= 1e6 ? `£${(n / 1e6).toFixed(1)}m` : `£${Math.round(n).toLocaleString('en-GB')}`
 
-export const Mining: React.FC = () => {
+/**
+ * `hold` renders the scene without its own fade: for the cover, which shows a
+ * single frame of it inside a shorter window whose timing would otherwise
+ * read as the scene ending.
+ */
+export const Mining: React.FC<{ hold?: boolean }> = ({ hold = false }) => {
   const frame = useCurrentFrame()
   const { fps, width, height } = useVideoConfig()
   const portrait = height > width
   const { posOf, curveOf } = portrait ? PORTRAIT : LANDSCAPE
-  const fade = useSceneFade()
+  const sceneFade = useSceneFade()
+  const fade = hold ? 1 : sceneFade
 
   // Beat C: the map steps back to the left to make room for the findings.
   const aside = prog(frame, PANEL_AT - 10, PANEL_AT + 26, easeInOut)
