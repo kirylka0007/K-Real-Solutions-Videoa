@@ -74,7 +74,7 @@ export const CTA = {
  */
 export const MUSIC = {
   professional: { file: 'audio/professional.mp3', dropAt: 10.3, volume: 0.45 },
-  'happy-tree': { file: 'audio/happy-tree.mp3', dropAt: 15.95, volume: 1.15 },
+  'happy-tree': { file: 'audio/happy-tree.mp3', dropAt: 15.75, volume: 1.15 },
 } as const
 
 export type MusicId = keyof typeof MUSIC | 'none'
