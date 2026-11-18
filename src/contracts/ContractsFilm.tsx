@@ -1,7 +1,7 @@
-import { AbsoluteFill, Sequence, useCurrentFrame, useVideoConfig } from 'remotion'
+import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from 'remotion'
 import { Fonts } from '../fonts'
 import { Atmosphere, Kicker, Lockup, PulseDot, easeInOut, prog, useSceneFade } from '../components/kit'
-import { C, FONT } from '../theme'
+import { C, FONT, FPS, MUSIC, type MusicId } from '../theme'
 import { ANSWER, COUNTS, DOCS, PARTIES, PRECEDENCE, PROVISIONS, QUESTION, inForce, type Doc, type Version } from './data'
 
 /**
@@ -9,8 +9,8 @@ import { ANSWER, COUNTS, DOCS, PARTIES, PRECEDENCE, PROVISIONS, QUESTION, inForc
  * become one living document of the terms in force, which people and AI agents
  * can both ask questions of.
  *
- * Silent by design (no licensed track is required to render it): feed video
- * often plays muted, so every scene carries its message in text.
+ * Feed video often plays muted, so every scene carries its message in text;
+ * the soundtrack is optional (`music: 'none'` renders without the licensed file).
  */
 export const CSCENES = {
   hook: { from: 0, duration: 150 }, //       0–5s
@@ -29,7 +29,7 @@ const usePortrait = () => {
   return height > width
 }
 
-export const ContractsFilm: React.FC<{ coverLead?: number }> = ({ coverLead = 0 }) => (
+export const ContractsFilm: React.FC<{ coverLead?: number; music?: MusicId }> = ({ coverLead = 0, music = 'professional' }) => (
   <AbsoluteFill style={{ background: C.bg }}>
     <Fonts />
     {coverLead > 0 && (
@@ -38,6 +38,7 @@ export const ContractsFilm: React.FC<{ coverLead?: number }> = ({ coverLead = 0 
       </Sequence>
     )}
     <Sequence from={coverLead}>
+      {music !== 'none' && <Soundtrack id={music} />}
       <Sequence from={CSCENES.hook.from} durationInFrames={CSCENES.hook.duration}>
         <Hook />
       </Sequence>
@@ -61,6 +62,29 @@ export const ContractsFilm: React.FC<{ coverLead?: number }> = ({ coverLead = 0 
     </Sequence>
   </AbsoluteFill>
 )
+
+/**
+ * The music, trimmed as the main film trims it: the track's measured drop lands
+ * on the first product cut (the documents laid out in order, at 5.0s), with a
+ * short fade in and a fade out that ends with the film.
+ */
+const Soundtrack: React.FC<{ id: Exclude<MusicId, 'none'> }> = ({ id }) => {
+  const track = MUSIC[id]
+  const trimBefore = Math.round((track.dropAt - CSCENES.order.from / FPS) * FPS)
+  return (
+    <Audio
+      src={staticFile(track.file)}
+      trimBefore={trimBefore}
+      volume={f =>
+        track.volume *
+        interpolate(f, [0, 12, CTOTAL - 75, CTOTAL - 1], [0, 1, 1, 0], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+        })
+      }
+    />
+  )
+}
 
 const DemoLabel: React.FC = () => {
   const frame = useCurrentFrame()
