@@ -29,7 +29,7 @@ const usePortrait = () => {
   return height > width
 }
 
-export const ContractsFilm: React.FC<{ coverLead?: number; music?: MusicId }> = ({ coverLead = 0, music = 'professional' }) => (
+export const ContractsFilm: React.FC<{ coverLead?: number; music?: MusicId }> = ({ coverLead = 0, music = 'corporate' }) => (
   <AbsoluteFill style={{ background: C.bg }}>
     <Fonts />
     {coverLead > 0 && (

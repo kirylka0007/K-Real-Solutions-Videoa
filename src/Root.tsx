@@ -31,9 +31,9 @@ export const Root: React.FC = () => (
     {/* The LinkedIn cover: render with `remotion still Cover-4x5 --frame=520`. */}
     <Composition id="Cover-4x5" component={Cover} durationInFrames={SCENES.mining.duration} fps={FPS} width={1080} height={1350} />
     {/* Contract assurance film: documents read in order into one living view of the terms in force. */}
-    <Composition id="Contracts-16x9" component={ContractsFilm} durationInFrames={CTOTAL} fps={FPS} width={1920} height={1080} defaultProps={{ music: 'professional' as MusicId }} />
-    <Composition id="Contracts-4x5" component={ContractsFilm} durationInFrames={CTOTAL} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'professional' as MusicId }} />
-    <Composition id="Contracts-4x5-phone" component={ContractsFilm} durationInFrames={CTOTAL + COVER_LEAD} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'professional' as MusicId, coverLead: COVER_LEAD }} />
+    <Composition id="Contracts-16x9" component={ContractsFilm} durationInFrames={CTOTAL} fps={FPS} width={1920} height={1080} defaultProps={{ music: 'corporate' as MusicId }} />
+    <Composition id="Contracts-4x5" component={ContractsFilm} durationInFrames={CTOTAL} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'corporate' as MusicId }} />
+    <Composition id="Contracts-4x5-phone" component={ContractsFilm} durationInFrames={CTOTAL + COVER_LEAD} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'corporate' as MusicId, coverLead: COVER_LEAD }} />
     <Composition id="Contracts-Cover-4x5" component={ContractsCover} durationInFrames={150} fps={FPS} width={1080} height={1350} />
   </>
 )

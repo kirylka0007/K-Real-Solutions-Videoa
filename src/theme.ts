@@ -75,6 +75,11 @@ export const CTA = {
 export const MUSIC = {
   professional: { file: 'audio/professional.mp3', dropAt: 10.3, volume: 0.45 },
   'happy-tree': { file: 'audio/happy-tree.mp3', dropAt: 15.75, volume: 1.15 },
+  // "Corporate" by nastelbom, supplied by the owner for the contract film. The
+  // drums enter at 17.75s (measured: RMS jumps from about -18 to -4 dBFS in 20ms).
+  // The part the film uses sits at about -14 dBFS RMS with peaks at 0 dBFS, so
+  // 0.7 brings it to roughly -17 with 3dB of headroom.
+  corporate: { file: 'audio/corporate.mp3', dropAt: 17.75, volume: 0.7 },
 } as const
 
 export type MusicId = keyof typeof MUSIC | 'none'
