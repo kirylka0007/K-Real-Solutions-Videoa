@@ -3,6 +3,7 @@ import { Film } from './Film'
 import { Cover } from './Cover'
 import { SCENES } from './theme'
 import { CTOTAL, ContractsCover, ContractsFilm } from './contracts/ContractsFilm'
+import { PageIntro } from './PageIntro'
 
 /** Frames the phone cut holds the cover before the film: 0.8s. */
 const COVER_LEAD = 24
@@ -34,6 +35,8 @@ export const Root: React.FC = () => (
     <Composition id="Contracts-16x9" component={ContractsFilm} durationInFrames={CTOTAL} fps={FPS} width={1920} height={1080} defaultProps={{ music: 'corporate' as MusicId }} />
     <Composition id="Contracts-4x5" component={ContractsFilm} durationInFrames={CTOTAL} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'corporate' as MusicId }} />
     <Composition id="Contracts-4x5-phone" component={ContractsFilm} durationInFrames={CTOTAL + COVER_LEAD} fps={FPS} width={1080} height={1350} defaultProps={{ music: 'corporate' as MusicId, coverLead: COVER_LEAD }} />
+    {/* Company page photo post: who we are, what we do, for whom. */}
+    <Composition id="PageIntro-4x5" component={PageIntro} durationInFrames={1} fps={FPS} width={1080} height={1350} />
     <Composition id="Contracts-Cover-4x5" component={ContractsCover} durationInFrames={150} fps={FPS} width={1080} height={1350} />
   </>
 )
